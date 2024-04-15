@@ -1,25 +1,78 @@
-require: rubocop-rails
-Rails:
+# .rubocop.yml
+
+# The behavior of RuboCop can be controlled via the .rubocop.yml
+# configuration file. It makes it possible to enable/disable
+# certain cops (checks) and to alter their behavior if they accept
+# any parameters. The file can be placed either in your home
+# directory or in some project directory.
+#
+# RuboCop will start looking for the configuration file in the directory
+# where the inspected file is and continue its way up to the root directory.
+#
+
+inherit_from:
+  - '.rubocop-capybara.yml'
+  - '.rubocop-performance.yml'
+  - '.rubocop-rails.yml'
+  - '.rubocop-rspec.yml'  
+
+require:
+  - rubocop-capybara
+  - rubocop-performance
+  - rubocop-rails
+  - rubocop-rspec
+
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 2.7
+  TargetRailsVersion: 5.1
+  Exclude:
+    - '**/db/migrate/*'
+    - 'db/schema.rb'
+    - '**/Gemfile.lock'
+    - '**/Rakefile'
+    - '**/rails'
+    - '**/tmp'
+    - '**/vendor/**/*'
+    - '**/spec_helper.rb'
+    - 'node_modules/**/*'
+    - 'bin/*'
+
+# Set Enabled: false
+# This will disable the rule completely, regardless what other options you put
+Style/NegatedIf:
   Enabled: true
-
-# Commonly used screens these days easily fit more than 80 characters.
-Metrics/LineLength:
-  Max: 150
-
-# Too short methods lead to extraction of single-use methods, which can make
-# the code easier to read (by naming things), but can also clutter the class
-Metrics/MethodLength:
-  Max: 50
-Metrics/ModuleLength:
-  Max: 1500
-
-# The guiding principle of classes is SRP, SRP can't be accurately measured by LoC
-Metrics/ClassLength:
-  Max: 1500
 
 # Mixing the styles looks just silly.
 Style/HashSyntax:
   EnforcedStyle: ruby19_no_mixed_keys
 
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false  
+
+Bundler/OrderedGems:
+  Enabled: false  
+
+# Commonly used screens these days easily fit more than 80 characters.
+# Metrics/LineLength:
+Layout/LineLength:
+  Max: 95
+
+# Too short methods lead to extraction of single-use methods, which can make
+# the code easier to read (by naming things), but can also clutter the class
+Metrics/MethodLength:
+  Max: 50
+
+# The guiding principle of classes is SRP, SRP can't be accurately measured by LoC
+Metrics/ClassLength:
+  Max: 1500
+
+Metrics/ModuleLength:
+  Max: 1500
+
 Metrics/AbcSize:
   Max: 120
+  
