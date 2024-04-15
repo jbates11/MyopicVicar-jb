@@ -41,16 +41,16 @@ MyopicVicar::Application.configure do
   config.serve_static_files = true
 
   # Turning Source Maps On, disables concatenation and preprocessing of assets
-  # config.assets.debug = true    # for assets pipeline debugging
-  config.assets.debug = false
+  config.assets.debug = true    # for assets pipeline debugging
+  # config.assets.debug = false
 
   # Enable live sprockets assets pipeline compilation
-  # config.assets.compile = true    # for assets pipeline debugging
-  config.assets.compile = false
+  config.assets.compile = true    # for assets pipeline debugging
+  # config.assets.compile = false
 
   # Turning Digests (fingerprinting) On
-  # config.assets.digest = false    # for assets pipeline debugging
-  config.assets.digest = true
+  config.assets.digest = false    # for assets pipeline debugging
+  # config.assets.digest = true
 
   # Enables additional runtime error checking.
   # Minimize unexpected behaviour when deploying to `production`
