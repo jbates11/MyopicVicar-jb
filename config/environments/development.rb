@@ -115,4 +115,6 @@ MyopicVicar::Application.configure do
   config.register_embargo_list = MyopicVicar::MongoConfig['register_embargo_list']
   config.freecen2_place_cache = MyopicVicar::MongoConfig['freecen2_place_cache']
 
+  config.action_mailer.delivery_method = :letter_opener
+  config.action_mailer.perform_deliveries = true
 end
