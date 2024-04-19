@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require File.expand_path('../boot', __FILE__)
+require File.expand_path('boot', __dir__)
 
 require 'rails/all'
 require 'csv'
 
 if defined?(Bundler)
   # If you precompile assets before deploying to production, use this line
-  Bundler.require(*Rails.groups(assets: %w(development test)))
+  Bundler.require(*Rails.groups(assets: %w[development test]))
   # If you want your assets lazily compiled in production, use this line
   # Bundler.require(:default, :assets, Rails.env)
 end
@@ -35,6 +35,7 @@ module MyopicVicar
       FREEBMD
     ]
   end
+
   module Servers
     BRAZZA = 'brazza'
     COLOBUS = 'colobus'
@@ -77,7 +78,7 @@ module MyopicVicar
     # config.i18n.load_path += Dir[Rails.root.join('my', 'locales', '*.{rb,yml}').to_s]
     # config.i18n.default_locale = :de
     config.assets.enabled = true
-   
+
     # Change the path that assets are served from config.assets.prefix = "/assets"
     # Configure the default encoding used in templates for Ruby 1.9.
     config.encoding = 'utf-8'
@@ -104,25 +105,25 @@ module MyopicVicar
     case MyopicVicar::Application.config.template_set
     when TemplateSet::FREECEN
       config.freexxx_display_name = 'FreeCEN'
-      config.assets.paths << Rails.root.join('app', 'assets_freecen')
+      config.assets.paths << Rails.root.join('app/assets_freecen')
 
-      config.assets.paths << Rails.root.join('app', 'assets_freecen', 'styles')
-      config.assets.paths << Rails.root.join('app', 'assets_freecen', 'javascripts')
+      config.assets.paths << Rails.root.join('app/assets_freecen/styles')
+      config.assets.paths << Rails.root.join('app/assets_freecen/javascripts')
     when TemplateSet::FREEREG
       config.freexxx_display_name = 'FreeREG'
-      config.assets.paths << Rails.root.join('app', 'assets_freereg')
-      config.assets.paths << Rails.root.join('app', 'assets_freereg', 'javascripts')
-      config.assets.paths << Rails.root.join('app', 'assets_freereg', 'styles')
+      config.assets.paths << Rails.root.join('app/assets_freereg')
+      config.assets.paths << Rails.root.join('app/assets_freereg/javascripts')
+      config.assets.paths << Rails.root.join('app/assets_freereg/styles')
     when TemplateSet::FREEBMD
       config.freexxx_display_name = 'FreeBMD'
-      config.assets.paths << Rails.root.join('app', 'assets_freebmd')
+      config.assets.paths << Rails.root.join('app/assets_freebmd')
 
-      config.assets.paths << Rails.root.join('app', 'assets_freebmd', 'styles')
+      config.assets.paths << Rails.root.join('app/assets_freebmd/styles')
     else
       config.freexxx_display_name = 'FreeREG'
-      config.assets.paths << Rails.root.join('app', 'assets_freereg')
+      config.assets.paths << Rails.root.join('app/assets_freereg')
 
-      config.assets.paths << Rails.root.join('app', 'assets_freereg', 'styles')
+      config.assets.paths << Rails.root.join('app/assets_freereg/styles')
     end
 
     # Enable the asset pipeline
@@ -132,22 +133,29 @@ module MyopicVicar
     config.api_only = false
 
     # make the designer's fonts available for the stylesheets
-    config.assets.paths << Rails.root.join('app', 'assets')
-    config.assets.paths << Rails.root.join('app', 'assets', 'fonts')
+    config.assets.paths << Rails.root.join('app/assets')
+    config.assets.paths << Rails.root.join('app/assets/fonts')
 
     config.generators do |g|
       g.orm :mongoid
+      g.test_framework :rspec,
+                       fixtures: false,
+                       view_specs: false,
+                       helper_specs: false,
+                       routing_specs: false
     end
 
     config.before_configuration do
-      env_file = Rails.root.join('config', 'application.yml').to_s
+      env_file = Rails.root.join('config/application.yml').to_s
       if File.exist?(env_file)
         YAML.load_file(env_file)[Rails.env].each do |key, value|
           ENV[key.to_s] = value
         end
       end
-      mongo_config = Rails.root.join('config', 'mongo_config.yml')
-      MyopicVicar::MongoConfig = YAML.load_file(mongo_config)[Rails.env] if File.exist?(mongo_config)
+      mongo_config = Rails.root.join('config/mongo_config.yml')
+      if File.exist?(mongo_config)
+        MyopicVicar::MongoConfig = YAML.load_file(mongo_config)[Rails.env]
+      end
     end
   end
 end
