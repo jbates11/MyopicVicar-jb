@@ -33,7 +33,7 @@ gem 'bourbon'
 gem 'mail-logger'
 gem 'devise'
 gem 'devise-encryptable'
-gem 'nokogiri', ">= 1.13.6"
+# gem 'nokogiri', ">= 1.13.6"
 gem 'osgb', git: 'https://github.com/FreeUKGen/osgb.git'
 gem 'rubyzip'
 gem 'zip-zip'
@@ -50,5 +50,38 @@ gem 'jquery-rails'
 gem 'font_awesome5_rails'
 gem 'refinerycms-county_pages', :path => 'vendor/extensions'
 gem 'rubocop-rails'
-gem 'rubocop', '~> 1.23.0', require: false
+# gem 'rubocop', '~> 1.23.0', require: false
 gem 'browser'
+
+gem "puma"
+# gem dependencies for rails 5.1.7 compatibility
+gem 'nokogiri', '~> 1.15.0'
+gem 'psych', '~> 3.3.0'
+
+group :development, :test do
+  gem 'letter_opener'
+  gem 'erb-formatter'
+  gem 'erb_lint'
+  
+  gem 'debug'
+
+  gem 'rubocop-capybara'
+  gem 'rubocop-performance'
+  gem 'rubocop-rspec'
+  gem 'solargraph'
+  gem 'awesome_print'
+
+  gem 'mongoid-rspec'
+  gem 'factory_bot_rails'
+  gem 'faker'
+  gem 'database_cleaner-mongoid'
+end
+
+group :development do
+  gem 'web-console'  
+  gem 'xray-rails'  # reveal overlay templates, ctrl+shift+x 
+end  
+
+group :test do
+  gem 'capybara'
+end
