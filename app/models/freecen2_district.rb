@@ -35,7 +35,7 @@ class Freecen2District
   index({ chapman_code: 1, year: 1, name: 1 }, name: 'chapman_code_year_name')
   index({ chapman_code: 1, name: 1, year: 1 }, name: 'chapman_code_name_year')
   index({ chapman_code: 1, name: 1 }, name: 'chapman_code_name')
-  index({ name: 1 }, name: 'chapman_code_name')
+  index({ name: 1 }, name: 'name')
 
   class << self
     def chapman_code(chapman)

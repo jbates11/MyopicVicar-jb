@@ -738,7 +738,7 @@ class MessagesController < ApplicationController
     else
       send_message
     end
-    redirect_to message_path(@message.id, source: 'original') unless @problem_with_syndicate.present? && @problem_with_syndicate = true
+    redirect_to message_path(@message.id, source: 'original') unless @problem_with_syndicate.present? && @problem_with_syndicate == true
   end
 
   private
