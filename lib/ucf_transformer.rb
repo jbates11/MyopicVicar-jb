@@ -74,14 +74,28 @@ module UcfTransformer
     name_array + transformed_names
   end
 
+  # def self.contains_wildcard_ucf?(name_part)
+  #   # print "\tcontains_wildcard_ucf?(#{name_part}) => #{name_part.match(/[\*_]/) ? 'true' : 'false'}\n"
+  #   if name_part.blank?
+  #     result = false
+  #   else
+  #     result = name_part.match(/[\*_]/).present? ? true : false
+  #   end
+  #   result
+  # end
+
+  # Detect if a string contains any wildcard UCF characters
   def self.contains_wildcard_ucf?(name_part)
-    # print "\tcontains_wildcard_ucf?(#{name_part}) => #{name_part.match(/[\*_]/) ? 'true' : 'false'}\n"
-    if name_part.blank?
-      result = false
-    else
-      result = name_part.match(/[\*_]/).present? ? true : false
-    end
-    result
+    return false if name_part.blank?
+
+    # Define the set of wildcard UCF characters
+    wildcard_chars = ['*', '_', '?', '{', '}', '[', ']']
+
+    # Build a regex that matches any of them
+    regex = Regexp.union(wildcard_chars)
+
+    # Check if the string contains at least one
+    name_part.match?(regex)
   end
 
   def self.ucf_to_regex(name_part)
