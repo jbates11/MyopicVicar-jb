@@ -1,9 +1,8 @@
-require "rails_helper"
+require 'rails_helper'
 
-RSpec.describe "Factories" do
-  FactoryBot.factories.map(&:name).each do |factory_name|
-    it "builds #{factory_name} successfully" do
-      expect(build(factory_name)).to be_valid
-    end
+RSpec.describe 'FactoryBot' do
+  it 'lints all factories' do
+    # Use transaction rollback for speed
+    FactoryBot.lint
   end
 end
