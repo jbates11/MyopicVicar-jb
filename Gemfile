@@ -62,7 +62,7 @@ group :development, :test do
   gem 'letter_opener'
   gem 'erb-formatter'
   gem 'erb_lint'
-  
+
   gem 'debug'
 
   gem 'rubocop-capybara'
@@ -78,9 +78,10 @@ group :development, :test do
 end
 
 group :development do
-  gem 'web-console'  
-  gem 'xray-rails'  # reveal overlay templates, ctrl+shift+x 
-end  
+  gem 'web-console'
+  gem 'xray-rails' # reveal overlay templates, ctrl+shift+x
+  gem 'rufo'
+end
 
 group :test do
   gem 'capybara'

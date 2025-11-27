@@ -488,6 +488,7 @@ GEM
       ffi (~> 1.9)
     ruby2_keywords (0.0.2)
     rubyzip (2.3.0)
+    rufo (0.17.1)
     sass (3.7.4)
       sass-listen (~> 4.0.0)
     sass-listen (4.0.0)
@@ -635,6 +636,7 @@ DEPENDENCIES
   rubocop-rails
   rubocop-rspec
   rubyzip
+  rufo
   sass-rails
   simple_form
   solargraph
