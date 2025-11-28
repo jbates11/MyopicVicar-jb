@@ -9,8 +9,8 @@ namespace :freereg do
     Place.no_timeout.each do |place|
       p "Started #{place.place_name}"
       number += 1
-      old_list = place.ucf_list
-      updated_list = place.ucf_list
+      old_list = place.ucf_list.dup
+      updated_list = place.ucf_list.dup
       valid_files = []
       updated_list.keys.each {|key|
         file = Freereg1CsvFile.find(key)
