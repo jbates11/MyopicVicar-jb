@@ -4,7 +4,8 @@ require 'bson'
 
 namespace :mongo do
   desc "Scan all collections in a MongoDB database for a specific _id.
-        Usage: rake mongo:scan_id ID=691b73b49dd9bf505bbe6a61 DB=myopic_vicar_develomment MONGO_URI=mongodb://127.0.0.1:27017"
+        Usage: rake mongo:scan_id ID=691b73b49dd9bf505bbe6a61 DB=myopic_vicar_develomment MONGO_URI=mongodb://127.0.0.1:27017
+        Usage: rake mongo:scan_id ID=692257997f70f9ed76eed4b3 DB=myopic_vicar_development MONGO_URI=mongodb://mongo:27017"
   task :scan_id do
     id_str   = ENV['ID'] || '691b73b49dd9bf505bbe6a61'
     db_name  = ENV['DB'] || 'myopic_vicar_development'
