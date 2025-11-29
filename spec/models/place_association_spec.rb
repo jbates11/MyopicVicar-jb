@@ -2,11 +2,6 @@ require 'rails_helper'
 
 RSpec.describe Place, type: :model do
   it 'traces from Place down to its Freereg1CsvFile' do
-    # Build the chain: Place → Church → Register → Freereg1CsvFile
-    # place   = create(:place, place_name: "York")
-    # church  = create(:church, place: place, church_name: "St Mary")
-    # register = create(:register, church: church, register_name: "Baptism Register")
-    # file    = create(:freereg1_csv_file, register: register, file_name: "york_baptisms.csv")
     place    = create(:place, place_name: "York")
     church   = create(:church, place: place, church_name: "St Mary")
     register = create(:register, church: church, register_name: "Baptism Register")
