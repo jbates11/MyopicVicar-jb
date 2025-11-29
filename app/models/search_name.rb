@@ -7,6 +7,7 @@ class SearchName
   field :gender, type: String #m=male, f=female, nil=not specified
   field :type, type: String
 
+  embedded_in :search_record
 
   def contains_wildcard_ucf?
     result = UcfTransformer.contains_wildcard_ucf?(self.first_name) || UcfTransformer.contains_wildcard_ucf?(self.last_name)
