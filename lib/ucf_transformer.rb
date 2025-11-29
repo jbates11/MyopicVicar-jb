@@ -86,7 +86,11 @@ module UcfTransformer
 
   # Detect if a string contains any wildcard UCF characters
   def self.contains_wildcard_ucf?(name_part)
-    return false if name_part.blank?
+    # Early return if blank
+    if name_part.blank?
+      Rails.logger.debug "[UCF Check] Received blank input"
+      return false
+    end
 
     # Define the set of wildcard UCF characters
     wildcard_chars = ['*', '_', '?', '{', '}', '[', ']']
@@ -94,8 +98,24 @@ module UcfTransformer
     # Build a regex that matches any of them
     regex = Regexp.union(wildcard_chars)
 
-    # Check if the string contains at least one
-    name_part.match?(regex)
+    # Perform the match
+    flagged = name_part.match?(regex)
+
+    # Debugging output
+    Rails.logger.info "[UCF Check] Scanning string: #{name_part.inspect}"
+    Rails.logger.debug "[UCF Check] Wildcard characters: #{wildcard_chars.join(' ')}"
+    Rails.logger.debug "[UCF Check] Regex built: #{regex.inspect}"
+    Rails.logger.debug "[UCF Check] Flagged? #{flagged}"
+
+    # Pretty print with AwesomePrint for deeper inspection
+    # ap({
+    #   input: name_part,
+    #   wildcard_chars: wildcard_chars,
+    #   regex: regex,
+    #   flagged: flagged
+    # }, indent: -2, index: false)
+
+    flagged
   end
 
   def self.ucf_to_regex(name_part)
