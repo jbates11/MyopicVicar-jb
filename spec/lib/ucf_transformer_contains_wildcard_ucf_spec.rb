@@ -2,7 +2,7 @@ require 'rails_helper'
 require Rails.root.join('lib/ucf_transformer')
 
 RSpec.describe UcfTransformer do
-  describe '.contains_wildcard_ucf?' do
+  describe '#contains_wildcard_ucf?' do
     context 'when name_part is blank' do
       it 'returns false for nil' do
         expect(UcfTransformer.contains_wildcard_ucf?(nil)).to eq(false)
