@@ -1,7 +1,7 @@
 FactoryBot.define do
   factory :search_name do
-    first_name { "John" }
-    last_name  { "Doe" }
+    first_name { "Adam" }
+    last_name  { "Applebee" }
     role       { "child" }
     gender     { "m" }
     type       { "primary" }
