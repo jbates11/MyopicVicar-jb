@@ -107,14 +107,6 @@ module UcfTransformer
     Rails.logger.debug "[UCF Check] Regex built: #{regex.inspect}"
     Rails.logger.debug "[UCF Check] Flagged? #{flagged}"
 
-    # Pretty print with AwesomePrint for deeper inspection
-    # ap({
-    #   input: name_part,
-    #   wildcard_chars: wildcard_chars,
-    #   regex: regex,
-    #   flagged: flagged
-    # }, indent: -2, index: false)
-
     flagged
   end
 
