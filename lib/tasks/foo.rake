@@ -624,38 +624,120 @@ namespace :foo do
   end
 
 
-  desc "Refresh UCF lists on places"
-  task :refresh_ucf_lists, [:skip, :sleep_time] => [:environment] do |t,args|
+  # desc "Refresh UCF lists on places"
+  # task :refresh_ucf_lists, [:skip, :sleep_time] => [:environment] do |t,args|
 
-    file_for_messages = 'log/refresh_ucf_lists.log'
-    message_file = File.new(file_for_messages, 'w')
-    p "starting with a skip of #{args.skip.to_i}"
-    message_file.puts "starting with a skip of #{args.skip.to_i}"
+  #   file_for_messages = 'log/refresh_ucf_lists.log'
+  #   message_file = File.new(file_for_messages, 'w')
+  #   p "starting with a skip of #{args.skip.to_i}"
+  #   message_file.puts "starting with a skip of #{args.skip.to_i}"
+  #   time_start = Time.now
+
+  #   Place.data_present.order(:chapman_code => :asc, :place_name => :asc).no_timeout.each_with_index do |place, i|
+  #     time_place_start = Time.now
+
+  #     unless args.skip && i < args.skip.to_i
+  #       place.ucf_list = {}
+  #       Freereg1CsvFile.where(:place_name => place.place_name).order(:file_name => :asc).all.no_timeout.each do |file|
+  #         next if file.file_name == 'SOMFSJBA.csv' && file.userid == 'YvonneScrivener' # This file has 48,000 entries
+  #         print "#{i}\tUpdating\t#{place.chapman_code}\t#{place.place_name}\t#{file.file_name}\n"
+  #         message_file.puts "#{i}\tUpdating\t#{place.chapman_code}\t#{place.place_name}\t#{file.file_name}\n"
+  #         place.update_ucf_list(file)
+  #         file.save
+  #       end
+  #       place.save!
+  #       sleep args.sleep_time.to_f
+  #     end
+
+  #     time_place_process = Time.now - time_place_start
+  #     place_time = (Time.now - time_start) / i unless i == 0
+  #     p " #{time_place_process}, #{place_time}, #{i}"
+  #     message_file.puts "#{time_place_process}, #{place_time}, #{i}"
+
+  #   end
+
+  #   time_process = Time.now - time_start
+  #   p " #{time_process}"
+  #   message_file.puts "#{time_process}"
+  # end
+
+  desc "Refresh UCF lists on places"
+  task :refresh_ucf_lists, [:skip, :sleep_time] => [:environment] do |t, args|
+    # Default arguments
+    args.with_defaults(skip: 0, sleep_time: 0)
+
+    # Setup log file
+    log_path = Rails.root.join("log", "refresh_ucf_lists.log")
+    message_file = File.open(log_path, "w")
+
+    Rails.logger.info "Starting refresh_ucf_lists with skip=#{args.skip}, sleep_time=#{args.sleep_time}"
+    message_file.puts "Starting refresh_ucf_lists with skip=#{args.skip}, sleep_time=#{args.sleep_time}"
+
     time_start = Time.now
 
-    Place.data_present.order(:chapman_code => :asc, :place_name => :asc).no_timeout.each_with_index do |place, i|
+    # Iterate through places
+    Place.data_present.order(chapman_code: :asc, place_name: :asc).no_timeout.each_with_index do |place, i|
       time_place_start = Time.now
-      unless args.skip && i < args.skip.to_i
-        place.ucf_list = {}
-        Freereg1CsvFile.where(:place_name => place.place_name).order(:file_name => :asc).all.no_timeout.each do |file|
-          next if file.file_name == 'SOMFSJBA.csv' && file.userid == 'YvonneScrivener' # This file has 48,000 entries
-          print "#{i}\tUpdating\t#{place.chapman_code}\t#{place.place_name}\t#{file.file_name}\n"
-          message_file.puts "#{i}\tUpdating\t#{place.chapman_code}\t#{place.place_name}\t#{file.file_name}\n"
-          place.update_ucf_list(file)
-          file.save
-        end
-        place.save!
-        sleep args.sleep_time.to_f
-      end
-      time_place_process = Time.now - time_place_start
-      place_time = (Time.now - time_start) / i unless i == 0
-      p " #{time_place_process}, #{place_time}, #{i}"
-      message_file.puts "#{time_place_process}, #{place_time}, #{i}"
 
+      # Skip logic
+      if i < args.skip.to_i
+        Rails.logger.debug "Skipping place ##{i}: #{place.place_name}"
+        next
+      end
+
+      # Reset UCF list
+      place.ucf_list = {}
+
+      # Iterate through files for this place
+      Freereg1CsvFile.where(place_name: place.place_name).order(file_name: :asc).no_timeout.each do |file|
+        # Skip known heavy file
+        if file.file_name == "SOMFSJBA.csv" && file.userid == "YvonneScrivener"
+          Rails.logger.warn "Skipping heavy file #{file.file_name} for user #{file.userid}"
+          next
+        end
+
+        # Log progress
+        msg = "#{i}\tUpdating\t#{place.chapman_code}\t#{place.place_name}\t#{file.file_name}"
+        Rails.logger.info msg
+        message_file.puts msg
+
+        # Debugging with AwesomePrint
+        ap file.attributes, indent: -2, index: false
+
+        # Update UCF list
+        begin
+          place.update_ucf_list(file)
+          file.save!
+        rescue => e
+          Rails.logger.error "Error updating file #{file.file_name} for place #{place.place_name}: #{e.message}"
+          ap e.backtrace.take(5) # show first 5 lines of backtrace
+        end
+      end
+
+      # Save place
+      begin
+        place.save!
+      rescue => e
+        Rails.logger.error "Error saving place #{place.place_name}: #{e.message}"
+      end
+
+      # Sleep between iterations
+      sleep args.sleep_time.to_f if args.sleep_time.to_f > 0
+
+      # Place timing info
+      time_place_process = Time.now - time_place_start
+      avg_time = (Time.now - time_start) / i unless i.zero?
+
+      Rails.logger.debug "Processed place ##{i} in #{time_place_process.round(2)}s (avg #{avg_time&.round(2)}s)"
+      message_file.puts "Place process time: #{time_place_process}, Average time: #{avg_time}, Processed places: #{i + 1}"
     end
-    time_process = Time.now - time_start
-    p " #{time_process}"
-    message_file.puts "#{time_process}"
+
+    # Final timing
+    total_time = Time.now - time_start
+    Rails.logger.info "Finished refresh_ucf_lists in #{total_time.round(2)}s"
+    message_file.puts "Total finished refresh_ucf_lists time: #{total_time.round(2)}s"
+
+    message_file.close
   end
 
   desc "Recalculate SearchRecord for Freereg1CsvEntry ids in a file"
