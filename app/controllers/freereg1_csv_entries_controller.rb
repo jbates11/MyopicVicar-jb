@@ -113,18 +113,23 @@ class Freereg1CsvEntriesController < ApplicationController
 
   def display_info
     @freereg1_csv_file = @freereg1_csv_entry.blank? ? Freereg1CsvFile.find(session[:freereg1_csv_file_id]) : @freereg1_csv_entry.freereg1_csv_file
+    
     @freereg1_csv_file_id = @freereg1_csv_file.id
     @freereg1_csv_file_name = @freereg1_csv_file.file_name
     @file_owner = @freereg1_csv_file.userid
+
     @register = @freereg1_csv_file.register
     @register_type = @register.register_type
     @register_name = RegisterType.display_name(@register.register_type)
+
     @church = @register.church
     @church_name = @church.church_name
+
     @place = @church.place
     @county = @place.county
     @chapman_code = @place.chapman_code
     @place_name = @place.place_name
+    
     @user = get_user
     @first_name = @user.person_forename if @user.present?
   end
@@ -138,13 +143,16 @@ class Freereg1CsvEntriesController < ApplicationController
     end
     @freereg1_csv_file = @freereg1_csv_entry.freereg1_csv_file
     redirect_back(fallback_location: new_manage_resource_path, notice: 'File is currently awaiting processing and should not be edited') && return unless @freereg1_csv_file.can_we_edit?
+    
     display_info
 
     @embargo_permitted = (session[:role] == 'system_administrator' || session[:role] == 'executive_director') ? true : false
     @freereg1_csv_entry.embargo_records.build if @embargo_permitted
     @date = DateTime.now
+
     session[:freereg1_csv_entry_id] = @freereg1_csv_entry._id
     session[:zero_listing] = true if params[:zero_listing].present?
+    
     @freereg1_csv_entry.multiple_witnesses.build if @freereg1_csv_entry.multiple_witnesses.count < FreeregOptionsConstants::MAXIMUM_WINESSES
   end
 
@@ -253,39 +261,135 @@ class Freereg1CsvEntriesController < ApplicationController
     @order, @array_of_entries, @json_of_entries = @freereg1_csv_entry.order_fields_for_record_type(record_type, @entry.freereg1_csv_file.def, current_authentication_devise_user.present?)
   end
 
+  # def update
+  #   @freereg1_csv_entry = Freereg1CsvEntry.find(params[:id]) if params[:id].present?
+
+  #   unless Freereg1CsvEntry.valid_freereg1_csv_entry?(@freereg1_csv_entry)
+  #     message = 'The entry was incorrectly linked. Have your coordinator contact the web master'
+  #     redirect_back(fallback_location: new_manage_resource_path, notice: message) && return
+  #   end
+
+  #   old_search_record = @freereg1_csv_entry.search_record
+  #   @freereg1_csv_file = @freereg1_csv_entry.freereg1_csv_file
+  #   params[:freereg1_csv_entry][:record_type] = @freereg1_csv_file.record_type
+  #   @freereg1_csv_file.check_and_augment_def(params[:freereg1_csv_entry])
+
+  #   params[:freereg1_csv_entry] = @freereg1_csv_entry.adjust_parameters(params[:freereg1_csv_entry])
+  #   proceed = @freereg1_csv_entry.update_attributes(freereg1_csv_entry_params)
+  #   message = @freereg1_csv_entry.errors.full_messages
+  #   message = message + @freereg1_csv_entry.embargo_records.last.errors.full_messages unless @freereg1_csv_entry.embargo_records.blank?
+  #   redirect_back(fallback_location: edit_freereg1_csv_entry_path(@freereg1_csv_entry), notice: "The update of the entry failed #{message}.") && return unless proceed
+
+  #   @freereg1_csv_entry.check_and_correct_county
+  #   @freereg1_csv_entry.check_year
+    
+  #   # search_version = calculate_software_version
+  #   place, _church, _register = get_location_from_file(@freereg1_csv_file)
+  #   # SearchRecord.update_create_search_record(@freereg1_csv_entry, search_version, place)
+    
+  #   update_file_statistics(place)
+  #   # @freereg1_csv_file.update_statistics_and_access(session[:my_own])
+
+  #   @freereg1_csv_entry.reload
+  #   @freereg1_csv_entry.update_place_ucf_list(place, @freereg1_csv_file, old_search_record)
+
+  #   flash[:notice] = 'The change in entry contents was successful, the file is now locked against replacement until it has been downloaded.'
+    
+  #   if session[:zero_listing]
+  #     session.delete(:zero_listing)
+  #     redirect_to freereg1_csv_entry_path(@freereg1_csv_entry, zero_listing: 'true')
+  #   else
+  #     redirect_to freereg1_csv_entry_path(@freereg1_csv_entry)
+  #   end
+  # end
+
+
   def update
-    @freereg1_csv_entry = Freereg1CsvEntry.find(params[:id]) if params[:id].present?
-    unless Freereg1CsvEntry.valid_freereg1_csv_entry?(@freereg1_csv_entry)
-      message = 'The entry was incorrectly linked. Have your coordinator contact the web master'
-      redirect_back(fallback_location: new_manage_resource_path, notice: message) && return
+    # 1. Find the entry safely
+    if params[:id].present?
+      @freereg1_csv_entry = Freereg1CsvEntry.find(params[:id])
+      logger.info "---Loaded Freereg1CsvEntry with ID=#{params[:id]}"
+      ap @freereg1_csv_entry, indent: 2, index: false
+    else
+      logger.warn "---No :id parameter provided to update action"
+      redirect_back(fallback_location: new_manage_resource_path,
+                    notice: "No entry ID provided") and return
     end
 
+    # 2. Validate entry linkage
+    unless Freereg1CsvEntry.valid_freereg1_csv_entry?(@freereg1_csv_entry)
+      message = "The entry was incorrectly linked. Have your coordinator contact the web master"
+      logger.error "---Invalid linkage for entry ID=#{@freereg1_csv_entry&.id}"
+      redirect_back(fallback_location: new_manage_resource_path, notice: message) and return
+    end
+
+    # 3. Capture old search record
     old_search_record = @freereg1_csv_entry.search_record
+    logger.debug "---Captured old search record: #{old_search_record&.id}"
+
+    # 4. Load parent file
     @freereg1_csv_file = @freereg1_csv_entry.freereg1_csv_file
+    logger.info "---Associated file loaded: #{@freereg1_csv_file&.id}"
+    ap @freereg1_csv_file, indent: 2, index: false
+
+    # 5. Ensure record type consistency
     params[:freereg1_csv_entry][:record_type] = @freereg1_csv_file.record_type
     @freereg1_csv_file.check_and_augment_def(params[:freereg1_csv_entry])
+    logger.debug "---Record type forced to #{@freereg1_csv_file.record_type}"
 
-    params[:freereg1_csv_entry] = @freereg1_csv_entry.adjust_parameters(params[:freereg1_csv_entry])
+    # 6. Adjust parameters before saving
+    params[:freereg1_csv_entry] =
+      @freereg1_csv_entry.adjust_parameters(params[:freereg1_csv_entry])
+    logger.debug "---Adjusted parameters: #{params[:freereg1_csv_entry].inspect}"
+
+    # 7. Attempt update
     proceed = @freereg1_csv_entry.update_attributes(freereg1_csv_entry_params)
-    message = @freereg1_csv_entry.errors.full_messages
-    message = message + @freereg1_csv_entry.embargo_records.last.errors.full_messages unless @freereg1_csv_entry.embargo_records.blank?
-    redirect_back(fallback_location: edit_freereg1_csv_entry_path(@freereg1_csv_entry), notice: "The update of the entry failed #{message}.") && return unless proceed
+    logger.info "---Update attempt result: #{proceed}"
 
+    # 8. Collect error messages if any
+    message = @freereg1_csv_entry.errors.full_messages
+    if @freereg1_csv_entry.embargo_records.present?
+      message += @freereg1_csv_entry.embargo_records.last.errors.full_messages
+    end
+    logger.warn "---Update errors: #{message.join(', ')}" unless proceed
+
+    # 9. Handle failure
+    unless proceed
+      redirect_back(fallback_location: edit_freereg1_csv_entry_path(@freereg1_csv_entry),
+                    notice: "The update of the entry failed #{message}.") and return
+    end
+
+    # 10. Post-update corrections
     @freereg1_csv_entry.check_and_correct_county
     @freereg1_csv_entry.check_year
-    
-    # search_version = calculate_software_version
-    place, _church, _register = get_location_from_file(@freereg1_csv_file)
-    # SearchRecord.update_create_search_record(@freereg1_csv_entry, search_version, place)
-    
-    update_file_statistics(place)
-    # @freereg1_csv_file.update_statistics_and_access(session[:my_own])
+    logger.debug "---Post-update corrections applied"
 
+    # 11. Location and statistics
+    place, _church, _register = get_location_from_file(@freereg1_csv_file)
+    logger.info "---place:\n #{place}"
+    # logger.info "---place:\n #{place.ai(index: true, plain: true)}"
+    logger.info "---_church:\n #{_church}"
+    # logger.info "---_church:\n #{_church.ai(index: true, plain: true)}"
+    logger.info "---_register:\n #{_register}"
+    # logger.info "---_register:\n #{_register.ai(index: true, plain: true)}"
+
+    update_file_statistics(place)
+    logger.info "\n---File statistics updated for place_object.id=#{place&.id}"
+
+    # 12. Reload entry and update place UCF list
     @freereg1_csv_entry.reload
     @freereg1_csv_entry.update_place_ucf_list(place, @freereg1_csv_file, old_search_record)
-    flash[:notice] = 'The change in entry contents was successful, the file is now locked against replacement until it has been downloaded.'
+    logger.info "---Place UCF list updated"
+
+    # 13. Success message
+    flash[:notice] = "The change in entry contents was successful, " \
+                    "the file is now locked against replacement until it has been downloaded."
+    logger.info "---Update successful for entry ID=#{@freereg1_csv_entry.id}"
+
+    # 14. Redirect to show page
     if session[:zero_listing]
       session.delete(:zero_listing)
+      logger.info "---Zero listing flag detected, redirecting with zero_listing param"
       redirect_to freereg1_csv_entry_path(@freereg1_csv_entry, zero_listing: 'true')
     else
       redirect_to freereg1_csv_entry_path(@freereg1_csv_entry)

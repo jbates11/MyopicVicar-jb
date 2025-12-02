@@ -102,6 +102,7 @@ class Freereg1CsvFile
   has_many :batch_errors
 
   has_many :freereg1_csv_entries, validate: false, order: :id.asc
+  
   VALID_DAY = /\A\d{1,2}\z/
   VALID_MONTH = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP","SEPT", "OCT", "NOV", "DEC", "*","JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"]
   VALID_YEAR = /\A\d{4}\z/
@@ -877,12 +878,43 @@ class Freereg1CsvFile
     end
   end
 
+  # def search_record_ids_with_wildcard_ucf
+  #   ids = []
+  #   self.freereg1_csv_entries.each do |entry|
+  #     entry.reload
+  #     ids << entry.search_record.id if entry.search_record && entry.search_record.contains_wildcard_ucf?
+  #   end
+  #   ids
+  # end
+
   def search_record_ids_with_wildcard_ucf
+    Rails.logger.info "Scanning Freereg1CsvFile #{id} for wildcard UCFs..."
     ids = []
-    self.freereg1_csv_entries.each do |entry|
+
+    freereg1_csv_entries.each do |entry|
       entry.reload
-      ids << entry.search_record.id if entry.search_record && entry.search_record.contains_wildcard_ucf?
+      sr = entry.search_record
+
+      if sr
+        flagged = sr.contains_wildcard_ucf?  # search_record
+        Rails.logger.debug "Entry #{entry.id} -> SearchRecord #{sr.id} flagged? #{flagged}"
+
+        if flagged
+          ids << sr.id
+          Rails.logger.debug "Flagged SearchRecord details:\n#{sr.ai}"
+        end
+      else
+        Rails.logger.debug "Entry #{entry.id} has no linked SearchRecord"
+      end
     end
+
+    if ids.any?
+      Rails.logger.info "Freereg1CsvFile #{id} flagged #{ids.size} SearchRecords"
+    else
+      Rails.logger.info "Freereg1CsvFile #{id} has no flagged SearchRecords"
+    end
+
+    Rails.logger.info "---ids: #{ids}\n"
     ids
   end
 

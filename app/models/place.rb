@@ -92,6 +92,7 @@ class Place
   has_many :gaps
 
   has_many :open_names_per_place
+  
   PLACE_BASE_URL = "http://www.genuki.org.uk"
 
   module MeasurementSystem
@@ -657,11 +658,39 @@ class Place
     PlaceCache.refresh(chapman_code)
   end
 
+  # def update_ucf_list(file)
+  #   ids = file.search_record_ids_with_wildcard_ucf
+  #   self.ucf_list[file.id.to_s] = ids if ids && ids.size > 0
+  #   file.ucf_list = ids if ids && ids.size > 0
+  #   file.ucf_updated = DateTime.now.to_date
+  # end
+
   def update_ucf_list(file)
+    Rails.logger.info "Updating UCF list for Place #{id} with File #{file.id}..."
+
     ids = file.search_record_ids_with_wildcard_ucf
-    self.ucf_list[file.id.to_s] = ids if ids && ids.size > 0
-    file.ucf_list = ids if ids && ids.size > 0
+    Rails.logger.debug "Flagged SearchRecord IDs from File #{file.id}:\n#{ids.ai}"
+
+    if ids.present?
+      # Update place-level UCF list
+      self.ucf_list[file.id.to_s] = ids
+      Rails.logger.info "Place #{id} UCF list updated with File #{file.id}"
+      Rails.logger.info "Place UCF list details:\n#{self.ucf_list.ai}"
+
+      # Update file-level UCF list
+      file.ucf_list = ids
+      Rails.logger.info "File #{file.id} UCF list updated"
+      Rails.logger.info "File UCF list details:\n#{file.ucf_list.ai}"
+    else
+      # Explicitly set empty hash and array
+      self.ucf_list[file.id.to_s] = {}
+      file.ucf_list = []
+      Rails.logger.info "No wildcard UCFs found for File #{file.id}"
+    end
+
+    # Always stamp update date
     file.ucf_updated = DateTime.now.to_date
+    Rails.logger.info "File #{file.id} UCF updated date set to #{file.ucf_updated}"
   end
 
   def clean_up_ucf_list

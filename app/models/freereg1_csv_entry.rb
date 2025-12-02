@@ -31,15 +31,15 @@ class Freereg1CsvEntry
   # http://www.freereg.org.uk/howto/enterdata.htm
   # They have only been modified to replace hyphens with underscores.
   #original Common fields
-  field :county, type: String # note this is actually a chapman code in the records
-  field :place, type: String #every where else this is place_name
   field :church_name, type: String
-  field :register_type, type: String
-  field :register_entry_number, type: String
-  field :notes, type: String
+  field :county, type: String # note this is actually a chapman code in the records
   field :file_line_number, type: Integer
-  field :film, type: String
   field :film_number, type: String
+  field :film, type: String
+  field :notes, type: String
+  field :place, type: String #every where else this is place_name
+  field :register_entry_number, type: String
+  field :register_type, type: String
   field :suffix, type: String
 
   #new common fields
@@ -50,38 +50,38 @@ class Freereg1CsvEntry
   #original baptism fields
   field :baptism_date, type: String #actual date as written
   field :birth_date, type: String #actual date as written
-  field :person_forename, type: String
-  field :person_sex, type: String
   field :father_forename, type: String
   field :father_occupation, type: String
   field :father_surname, type: String
   field :mother_forename, type: String
   field :mother_surname, type: String
   field :person_abode, type: String
+  field :person_forename, type: String
+  field :person_sex, type: String
 
   #new baptism fields
   field :confirmation_date, type: String #actual date as written
-  field :received_into_church_date, type: String #actual date as written
-  field :person_surname, type: String
-  field :person_title, type: String
-  field :person_age, type: String
-  field :person_condition, type: String
-  field :person_status, type: String
-  field :person_occupation, type: String
-  field :person_place_birth, type: String
-  field :person_county_birth, type: String
-  field :person_relationship, type: String
-  field :father_title, type: String
   field :father_abode, type: String
-  field :father_place, type: String
   field :father_county, type: String
-  field :mother_title, type: String
+  field :father_place, type: String
+  field :father_title, type: String
   field :mother_abode, type: String
   field :mother_condition_prior_to_marriage, type: String
-  field :mother_place_prior_to_marriage, type: String
   field :mother_county_prior_to_marriage, type: String
   field :mother_occupation, type: String
+  field :mother_place_prior_to_marriage, type: String
+  field :mother_title, type: String
+  field :person_age, type: String
+  field :person_condition, type: String
+  field :person_county_birth, type: String
+  field :person_occupation, type: String
+  field :person_place_birth, type: String
+  field :person_relationship, type: String
+  field :person_status, type: String
+  field :person_surname, type: String
+  field :person_title, type: String
   field :private_baptism
+  field :received_into_church_date, type: String #actual date as written
 
   #field :witness1_forename, type: String
   #field :witness1_surname, type: String
@@ -103,9 +103,9 @@ class Freereg1CsvEntry
 
   #original burial fields
   field :burial_date, type: String #actual date as written
+  field :burial_person_abode, type: String
   field :burial_person_forename, type: String
   field :burial_person_surname, type: String
-  field :burial_person_abode, type: String
   field :female_relative_forename, type: String
   field :male_relative_forename, type: String
   field :person_age, type: String
@@ -113,16 +113,16 @@ class Freereg1CsvEntry
   field :relative_surname, type: String
 
   #new burial fields
-  field :death_date, type: String  #Date of death (To be used if date of burial is absent)
+  field :burial_location_information, type: String
+  field :burial_parish, type: String
   field :burial_person_title, type: String
-  field :male_relative_title, type: String
+  field :cause_of_death, type: String
+  field :death_date, type: String  #Date of death (To be used if date of burial is absent)
   field :female_relative_surname, type: String #To be added to search_names
   field :female_relative_title, type: String
-  field :cause_of_death, type: String
-  field :burial_location_information, type: String
-  field :place_of_death, type: String
+  field :male_relative_title, type: String
   field :memorial_information, type: String
-  field :burial_parish, type: String
+  field :place_of_death, type: String
 
 
   #original marriage fields
@@ -153,21 +153,21 @@ class Freereg1CsvEntry
   field :witness2_surname, type: String
 
   #new marriage fields
-  field :contract_date, type: String #actual date as written usage mainly in Scotland
-  field :bride_title, type: String
-  field :bride_marked
   field :bride_father_title, type: String
+  field :bride_marked
   field :bride_mother_forename, type: String
+  field :bride_mother_occupation, type: String
   field :bride_mother_surname, type: String
   field :bride_mother_title, type: String
-  field :bride_mother_occupation, type: String
-  field :groom_title, type: String
-  field :groom_marked
+  field :bride_title, type: String
+  field :contract_date, type: String #actual date as written usage mainly in Scotland
   field :groom_father_title, type: String
+  field :groom_marked
   field :groom_mother_forename, type: String
+  field :groom_mother_occupation, type: String
   field :groom_mother_surname, type: String
   field :groom_mother_title, type: String
-  field :groom_mother_occupation, type: String
+  field :groom_title, type: String
   field :marriage_by_licence
   field :witness3_forename, type: String
   field :witness3_surname, type: String
@@ -183,17 +183,17 @@ class Freereg1CsvEntry
   field :witness8_surname, type: String
 
   #calculated fields
-  field :year, type: String
-  field :line_id, type: String
-  field :error_flag, type:String, default: 'false'
-  field :record_digest, type: String
-  field :location, type: String
-  field :transcribed_by, type: String
-  field :credit, type: String
-  field :register, type: String
-  field :record_type, type: String
-  field :processed_date, type: DateTime
   field :consecrated_ground, type: String
+  field :credit, type: String
+  field :error_flag, type:String, default: 'false'
+  field :line_id, type: String
+  field :location, type: String
+  field :processed_date, type: DateTime
+  field :record_digest, type: String
+  field :record_type, type: String
+  field :register, type: String
+  field :transcribed_by, type: String
+  field :year, type: String
 
   validate :errors_in_fields
 
@@ -218,20 +218,20 @@ class Freereg1CsvEntry
   scope :zero_marriage_records, -> { where(:marriage_date.in => [nil,"","0"]) }
   scope :zero_burial_records, -> { where(:burial_date.in => [nil,"","0"]) }
 
-  index({ freereg1_csv_file_id: 1, year: 1 }, { name: 'freereg1_csv_file_id_year' })
-  index({freereg1_csv_file_id: 1,file_line_number:1})
-  index({freereg1_csv_file_id: 1, record_digest:1})
-  index({person_forename: 1})
-  index({mother_forename: 1})
-  index({groom_forenamen: 1})
-  index({groom_father_forename: 1})
-  index({female_relative_forenamee: 1})
-  index({father_forename: 1})
-  index({burial_person_forename: 1})
-  index({bride_forename: 1})
-  index({bride_father_forename: 1})
-  index({"multiple_witnesses.witness_forename": 1})
   index({ _id: 1, "embargo_record.id": 1 }, { name: 'entry_id_embargo_id' })
+  index({"multiple_witnesses.witness_forename": 1})
+  index({bride_father_forename: 1})
+  index({bride_forename: 1})
+  index({burial_person_forename: 1})
+  index({father_forename: 1})
+  index({female_relative_forenamee: 1})
+  index({freereg1_csv_file_id: 1, record_digest:1})
+  index({freereg1_csv_file_id: 1, year: 1 }, { name: 'freereg1_csv_file_id_year' })
+  index({freereg1_csv_file_id: 1,file_line_number:1})
+  index({groom_father_forename: 1})
+  index({groom_forenamen: 1})
+  index({mother_forename: 1})
+  index({person_forename: 1})
 
   class << self
     def id(id)
@@ -833,48 +833,88 @@ class Freereg1CsvEntry
     search_record.update_location(self, freereg1_csv_file) if search_record.present? && freereg1_csv_file.present?
   end
 
+  # def update_place_ucf_list(place, file, old_search_record)
+  #   file_in_ucf_list = place.ucf_list.has_key?(file.id.to_s)
+  #   search_record_has_ucf = search_record.contains_wildcard_ucf?.present? ? true : false
+  #   # No change
+  #   return if !file_in_ucf_list && !search_record_has_ucf
+
+  #   # list there and record has
+  #   if file_in_ucf_list && search_record_has_ucf
+  #     return if place.ucf_list[file.id.to_s].include?(search_record.id.to_s)
+
+  #     place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present?
+  #     file.ucf_list.delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present? && file.ucf_list.present?
+  #     place.ucf_list[file.id.to_s] << search_record.id
+
+  #     if file.ucf_list.blank?
+  #       file.ucf_list = []
+  #     end
+
+  #     file.ucf_list << search_record.id
+  #     file.ucf_updated = DateTime.now.to_date
+
+  #     file.save
+  #     place.save
+  #     return
+  #   end
+
+  #   if file_in_ucf_list && !search_record_has_ucf
+  #     place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present?
+  #     place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == search_record.id.to_s }
+  #     file.ucf_list.delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present? && file.ucf_list.present?
+  #     file.ucf_list.delete_if { |record| record.to_s == search_record.id.to_s } if file.ucf_list.present?
+      
+  #     file.ucf_updated = DateTime.now.to_date
+  #     file.save
+  #     place.save
+  #     return
+  #   end
+
+  #   if !file_in_ucf_list && search_record_has_ucf
+  #     place.ucf_list[file.id.to_s] = []
+  #     place.ucf_list[file.id.to_s] << search_record.id
+
+  #     if file.ucf_list.blank?
+  #       file.ucf_list = []
+  #     end
+
+  #     file.ucf_list << search_record.id
+  #     file.ucf_updated = DateTime.now.to_date
+  #     file.save
+  #     place.save
+  #   end
+  # end
+
   def update_place_ucf_list(place, file, old_search_record)
-    file_in_ucf_list = place.ucf_list.has_key?(file.id.to_s)
-    search_record_has_ucf = search_record.contains_wildcard_ucf?.present? ? true : false
-    # No change
-    return if !file_in_ucf_list && !search_record_has_ucf
+    file_key = file.id.to_s
+    file_in_ucf_list = place.ucf_list.key?(file_key)
+    search_record_has_ucf = search_record.contains_wildcard_ucf?.present?
 
-    # list there and record has
+    Rails.logger.info { "---▶ update_place_ucf_list called" }
+    Rails.logger.info { "---   file_key: #{file_key}" }
+    Rails.logger.info { "---   file_in_ucf_list: #{file_in_ucf_list}" }
+    Rails.logger.info { "---   search_record_has_ucf: #{search_record_has_ucf}" }
+    Rails.logger.info { "---   old_search_record: #{old_search_record&.id}" }
+    Rails.logger.info { "---   current search_record: #{search_record.id}" }
+
+    Rails.logger.info { "--- initial place ucf_list" }
+    logger.info "---place_ucf:\n #{place.ucf_list.ai(index: true, plain: true)}"
+    Rails.logger.info { "--- initial file ucf_list" }
+    logger.info "---file_ucf:\n #{file.ucf_list.ai}"
+    # logger.info "---file_ucf:\n #{file.ucf_list.ai(index: true, plain: true)}"
+
+    # Case 0: No change
+    return unless file_in_ucf_list || search_record_has_ucf
+
     if file_in_ucf_list && search_record_has_ucf
-      return if place.ucf_list[file.id.to_s].include?(search_record.id.to_s)
-      place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present?
-      file.ucf_list.delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present? && file.ucf_list.present?
-      place.ucf_list[file.id.to_s] << search_record.id
-      if file.ucf_list.blank?
-        file.ucf_list = []
-      end
-      file.ucf_list << search_record.id
-      file.ucf_updated = DateTime.now.to_date
-      file.save
-      place.save
-      return
-    end
-    if file_in_ucf_list && !search_record_has_ucf
-      place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present?
-      place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == search_record.id.to_s }
-      file.ucf_list.delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present? && file.ucf_list.present?
-      file.ucf_list.delete_if { |record| record.to_s == search_record.id.to_s } if file.ucf_list.present?
-      file.ucf_updated = DateTime.now.to_date
-      file.save
-      place.save
-      return
-    end
+      handle_add_ucf(place, file, file_key, old_search_record)
 
-    if !file_in_ucf_list && search_record_has_ucf
-      place.ucf_list[file.id.to_s] = []
-      place.ucf_list[file.id.to_s] << search_record.id
-      if file.ucf_list.blank?
-        file.ucf_list = []
-      end
-      file.ucf_list << search_record.id
-      file.ucf_updated = DateTime.now.to_date
-      file.save
-      place.save
+    elsif file_in_ucf_list && !search_record_has_ucf
+      handle_remove_ucf(place, file, file_key, old_search_record)
+
+    elsif !file_in_ucf_list && search_record_has_ucf
+      handle_new_ucf(place, file, file_key)
     end
   end
 
@@ -1457,5 +1497,57 @@ class Freereg1CsvEntry
       end
     end
   end
+
+
+  private
+
+  def handle_add_ucf(place, file, file_key, old_search_record)
+    return if place.ucf_list[file_key].include?(search_record.id.to_s)
+
+    cleanup_old_ids(place, file, file_key, old_search_record)
+
+    place.ucf_list[file_key] << search_record.id
+    file.ucf_list ||= []
+    file.ucf_list << search_record.id
+
+    update_and_save(file, place, "Case A: Added UCF record")
+  end
+
+  def handle_remove_ucf(place, file, file_key, old_search_record)
+    cleanup_old_ids(place, file, file_key, old_search_record)
+    place.ucf_list[file_key].delete(search_record.id.to_s)
+    file.ucf_list&.delete(search_record.id.to_s)
+
+    update_and_save(file, place, "Case B: Removed UCF record")
+  end
+
+  def handle_new_ucf(place, file, file_key)
+    place.ucf_list[file_key] = [search_record.id]
+    file.ucf_list ||= []
+    file.ucf_list << search_record.id
+
+    update_and_save(file, place, "Case C: Created new UCF list")
+  end
+
+  def cleanup_old_ids(place, file, file_key, old_search_record)
+    return unless old_search_record.present?
+
+    place.ucf_list[file_key].delete(old_search_record.id.to_s)
+    file.ucf_list&.delete(old_search_record.id.to_s)
+
+    Rails.logger.info { "---   cleanup_old_ids removed #{old_search_record.id}" }
+  end
+
+  def update_and_save(file, place, message)
+    file.ucf_updated = Date.today
+    file.save
+    place.save
+
+    Rails.logger.info { "---✔ #{message} - updated place ucf_list" }
+    logger.info "---place_ucf:\n #{place.ucf_list.ai(index: true, plain: true)}"
+    Rails.logger.info { "---✔ #{message} - updated file ucf_list" }
+    logger.info "---file_ucf:\n #{file.ucf_list.ai(index: true, plain: true)}"
+  end
+
 
 end

@@ -84,6 +84,7 @@ class SearchQueriesController < ApplicationController
 
     @search_query = SearchQuery.new(search_params.delete_if { |_k, v| v.blank? })
     adjust_search_query_parameters
+    
     if @search_query.save
       session[:query] = @search_query.id
       @search_results = @search_query.search
@@ -151,6 +152,7 @@ class SearchQueriesController < ApplicationController
     @page = session[:message] == 'load' && page.present? && page.parts.first.present? ? page.parts.first.body.html_safe : nil
 
     @search_query = SearchQuery.new
+    
     session.delete(:query)
     old_query = SearchQuery.search_id(params[:search_id]).first if params[:search_id].present?
     old_query.search_result.records = {} if old_query.present? && old_query.search_result.present?
@@ -254,12 +256,27 @@ class SearchQueriesController < ApplicationController
 
     flash[:notice] = 'Your search results are not available. Please repeat your search' if @search_query.result_count.blank?
     redirect_back(fallback_location: new_search_query_path) && return if @search_query.result_count.blank?
+    
     if @search_query.result_count >= FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS
       @result_count = @search_query.result_count
       @search_results = []
       @ucf_results = []
     else
       response, @search_results, @ucf_results, @result_count = @search_query.get_and_sort_results_for_display
+
+      logger.warn("\n#{App.name_upcase}:SEARCH_RESULTS_START:")
+      # logger.ap @search_results
+      Rails.logger.debug "This is a debug message"
+      Rails.logger.info "This is an info message"
+      Rails.logger.warn "This is a warning message"
+      Rails.logger.error "This is an error message"
+      Rails.logger.fatal "This is a fatal message"
+      logger.warn("#{App.name_upcase}:SEARCH_RESULTS__END:\n")
+
+      logger.warn("\n#{App.name_upcase}:UCF_RESULTS_START:")
+      # logger.ap @ucf_results
+      logger.warn("#{App.name_upcase}:UCF_RESULTS__END:\n")
+
       if !response || @search_results.nil? || @search_query.result_count.nil?
         logger.warn("#{appname_upcase}:SEARCH_ERROR:search results no longer present for #{@search_query.id}")
         flash[:notice] = 'Your search results are not available. Please repeat your search'

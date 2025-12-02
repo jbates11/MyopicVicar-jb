@@ -394,8 +394,10 @@ class SearchQuery
             if name.contains_wildcard_ucf?
               if first_name.blank? && last_name.present? && name.last_name.present?
                 filtered_records << record if last_name.downcase.match(UcfTransformer.ucf_to_regex(name.last_name.downcase))
+              
               elsif last_name.blank? && first_name.present? && name.first_name.present?
                 filtered_records << record if first_name.downcase.match(UcfTransformer.ucf_to_regex(name.first_name.downcase))
+              
               elsif last_name.present? && first_name.present? && name.last_name.present? && name.first_name.present?
                 filtered_records << record if last_name.downcase.match(UcfTransformer.ucf_to_regex(name.last_name.downcase)) &&
                   first_name.downcase.match(UcfTransformer.ucf_to_regex(name.first_name.downcase))
@@ -454,24 +456,90 @@ class SearchQuery
     filtered_records
   end
 
-  def get_and_sort_results_for_display
-    if self.search_result.records.respond_to?(:values)
-      search_results = self.search_result.records.values
-      search_results = self.filter_name_types(search_results)
-      search_results = self.filter_embargoed(search_results)
-      search_results = self.filter_census_addional_fields(search_results) if MyopicVicar::Application.config.template_set == 'freecen'
-      result_count = search_results.length.present? ? search_results.length : 0
-      search_results = self.sort_results(search_results) unless search_results.nil?
+  
+  # This method takes raw search results, runs them through several filters, 
+  # sorts them, wraps them as Mongoid models, and returns a structured response
+  # def get_and_sort_results_for_display
+  #   # test if raw search_result is a hash
+  #   if self.search_result.records.respond_to?(:values)
+  #     #  turns the hash into an array of result hashes.
+  #     search_results = self.search_result.records.values
 
-      ucf_results = self.ucf_results if self.ucf_results.present?
-      ucf_results = [] if ucf_results.blank?
-      response = true
-      return response, search_results.map{ |h| SearchRecord.new(h) }, ucf_results, result_count
-    else
-      response = false
-      return response
+  #     # keeps or removes results based on allowed name types.
+  #     search_results = self.filter_name_types(search_results)
+
+  #     # removes results that shouldn’t be visible to the user yet (think: hidden until a date).
+  #     search_results = self.filter_embargoed(search_results)
+
+  #     search_results = self.filter_census_addional_fields(search_results) if MyopicVicar::Application.config.template_set == 'freecen'
+
+  #     result_count = search_results.length.present? ? search_results.length : 0
+
+  #     search_results = self.sort_results(search_results) unless search_results.nil?
+
+
+  #     ucf_results = self.ucf_results if self.ucf_results.present?
+  #     ucf_results = [] if ucf_results.blank?
+
+  #     response = true
+
+  #     # wrap search_result into SearchRecord model object in memory, does NOT save to DB
+  #     return response, search_results.map{ |h| SearchRecord.new(h) }, ucf_results, result_count
+  #   else
+  #     # search_result is NOT a hash
+  #     response = false
+  #     return response
+  #   end
+  # end
+
+  def get_and_sort_results_for_display
+    unless self.search_result&.records.respond_to?(:values)
+      Rails.logger.warn { "SearchQuery#get_and_sort_results_for_display: No records found or records not hash-like" }
+      return false
     end
+
+    # Step 1: Extract values
+    search_results = self.search_result.records.values.compact
+    Rails.logger.debug { "---Step 1: Extracted raw results (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
+
+    # Step 2: Filter name types
+    search_results = filter_name_types(search_results)
+    Rails.logger.debug { "---Step 2: After filter_name_types (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
+
+    # Step 3: Filter embargoed
+    search_results = filter_embargoed(search_results)
+    Rails.logger.debug { "---Step 3: After filter_embargoed (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
+
+    # Step 4: Census additional fields (only for FreeCEN)
+    if MyopicVicar::Application.config.template_set == 'freecen'
+      search_results = filter_census_addional_fields(search_results)
+      Rails.logger.debug { "---Step 4: After filter_census_addional_fields (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
+    end
+
+    # Step 5: Count results safely
+    result_count = search_results.present? ? search_results.length : 0
+    Rails.logger.info { "---Step 5: Result count = #{result_count}" }
+
+    # Step 6: Sort results safely
+    search_results = sort_results(search_results) if search_results.present?
+    Rails.logger.debug { "---Step 6: After sort_results (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
+
+    # Step 7: Handle UCF results safely
+    ucf_results = self.ucf_results.presence || []
+    Rails.logger.debug { "---Step 7: UCF results (#{ucf_results.size})\n#{ucf_results.ai(index: false, plain: true)}" }
+
+    # Step 8: Wrap results in SearchRecord objects
+    wrapped_results = search_results.map { |h| SearchRecord.new(h) }
+    Rails.logger.debug { "---Step 8: Wrapped results into SearchRecord objects\n#{wrapped_results.ai(index: false, plain: true)}" }
+
+    # Final return
+    response = true
+    return response, wrapped_results, ucf_results, result_count
+  rescue => e
+    Rails.logger.error { "---Error in get_and_sort_results_for_display: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
+    return false
   end
+
 
   def include_record_for_fuzzy_search(search_name)
     include_record = false
@@ -617,27 +685,93 @@ class SearchQuery
     params
   end
 
+  # def name_search_params
+  #   params = {}
+  #   name_params = {}
+  #   if query_contains_wildcard?
+  #     name_params['first_name'] = wildcard_to_regex(first_name.downcase) if first_name
+  #     name_params['last_name'] = wildcard_to_regex(last_name.downcase) if last_name
+  #     params['search_names'] = { '$elemMatch' => name_params }
+  #   else
+  #     if fuzzy
+  #       name_params['first_name'] = Text::Soundex.soundex(first_name) if first_name
+  #       name_params['last_name'] = Text::Soundex.soundex(last_name) if last_name.present?
+  #       params['search_soundex'] = { '$elemMatch' => name_params }
+  #     else
+  #       name_params['first_name'] = first_name.downcase if first_name
+  #       name_params['last_name'] = last_name.downcase if last_name.present? && !self.no_surname
+  #       name_params['last_name'] = nil if self.no_surname
+  #       params['search_names'] = { '$elemMatch': name_params }
+  #     end
+  #   end
+  #   params
+  # end
+
   def name_search_params
     params = {}
     name_params = {}
-    if query_contains_wildcard?
-      name_params['first_name'] = wildcard_to_regex(first_name.downcase) if first_name
-      name_params['last_name'] = wildcard_to_regex(last_name.downcase) if last_name
-      params['search_names'] = { '$elemMatch' => name_params }
-    else
-      if fuzzy
-        name_params['first_name'] = Text::Soundex.soundex(first_name) if first_name
-        name_params['last_name'] = Text::Soundex.soundex(last_name) if last_name.present?
+
+    begin
+      Rails.logger.debug { "---Building name search params..." }
+
+      if query_contains_wildcard?
+        Rails.logger.info { "---Wildcard search detected." }
+
+        if first_name.present?
+          name_params['first_name'] = wildcard_to_regex(first_name.downcase)
+          Rails.logger.debug { "---Wildcard first_name regex: #{name_params['first_name'].inspect}" }
+        end
+
+        if last_name.present?
+          name_params['last_name'] = wildcard_to_regex(last_name.downcase)
+          Rails.logger.debug { "---Wildcard last_name regex: #{name_params['last_name'].inspect}" }
+        end
+
+        params['search_names'] = { '$elemMatch' => name_params }
+
+      elsif fuzzy
+        Rails.logger.info { "---Fuzzy search enabled." }
+
+        if first_name.present?
+          name_params['first_name'] = Text::Soundex.soundex(first_name)
+          Rails.logger.debug { "---Soundex first_name: #{name_params['first_name']}" }
+        end
+
+        if last_name.present?
+          name_params['last_name'] = Text::Soundex.soundex(last_name)
+          Rails.logger.debug { "---Soundex last_name: #{name_params['last_name']}" }
+        end
+
         params['search_soundex'] = { '$elemMatch' => name_params }
+
       else
-        name_params['first_name'] = first_name.downcase if first_name
-        name_params['last_name'] = last_name.downcase if last_name.present? && !self.no_surname
-        name_params['last_name'] = nil if self.no_surname
-        params['search_names'] = { '$elemMatch': name_params }
+        Rails.logger.info { "---Exact name search (lowercase match)." }
+
+        if first_name.present?
+          name_params['first_name'] = first_name.downcase
+          Rails.logger.debug { "---Exact first_name: #{name_params['first_name']}" }
+        end
+
+        if last_name.present? && !no_surname
+          name_params['last_name'] = last_name.downcase
+          Rails.logger.debug { "---Exact last_name: #{name_params['last_name']}" }
+        elsif no_surname
+          name_params['last_name'] = nil
+          Rails.logger.debug { "---No surname flag set — last_name set to nil" }
+        end
+
+        params['search_names'] = { '$elemMatch' => name_params }
       end
+
+      Rails.logger.debug { "---Final name search params:\n#{params.ai(sort_keys: true, plain: true)}" }
+      params
+
+    rescue => e
+      Rails.logger.error { "---Error building name_search_params: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
+      {}
     end
-    params
   end
+  
 
   def next_and_previous_records(current)
     if search_result.records.respond_to?(:values)
@@ -849,17 +983,79 @@ class SearchQuery
     params
   end
 
+  # def search
+  #   @search_parameters = search_params
+  #   @search_index = SearchRecord.index_hint(@search_parameters)
+  #   logger.warn("#{App.name_upcase}:SEARCH_HINT: #{@search_index}")
+  #   logger.warn("#{App.name_upcase}:SEARCH_PARAMETERS: #{@search_parameters}")
+  #   update_attribute(:search_index, @search_index)
+       
+  #   records = SearchRecord.collection.find(@search_parameters)#.hint(@search_index.to_s).max_time_ms(Rails.application.config.max_search_time).limit(FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
+  #   persist_results(records)
+    
+  #   logger.warn("\n#{App.name_upcase}:RECORD_START:")
+  #   logger.ap SearchRecord.collection.find(@search_parameters), :warn
+  #   logger.warn("#{App.name_upcase}:RECORD_END:\n")
+
+  #   persist_additional_results(secondary_date_results) if App.name == 'FreeREG' && (result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
+    
+  #   records = search_ucf if can_query_ucf? && result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS
+
+  #   logger.warn("\n#{App.name_upcase}:RECORD_START2:")
+  #   logger.ap search_ucf, :warn
+  #   logger.warn("#{App.name_upcase}:RECORD_END2:\n")
+
+  #   records
+  # end
+
   def search
-    @search_parameters = search_params
-    @search_index = SearchRecord.index_hint(@search_parameters)
-    logger.warn("#{App.name_upcase}:SEARCH_HINT: #{@search_index}")
-    logger.warn("#{App.name_upcase}:SEARCH_PARAMETERS: #{@search_parameters}")
-    update_attribute(:search_index, @search_index)
-    records = SearchRecord.collection.find(@search_parameters).hint(@search_index.to_s).max_time_ms(Rails.application.config.max_search_time).limit(FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
-    persist_results(records)
-    persist_additional_results(secondary_date_results) if App.name == 'FreeREG' && (result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
-    records = search_ucf if can_query_ucf? && result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS
-    records
+    begin
+      # Step 1: Gather search parameters
+      @search_parameters = search_params
+      Rails.logger.debug { "---Search parameters:\n#{@search_parameters.ai(sort_keys: true, plain: true)}" }
+
+      # Step 2: Determine index hint
+      @search_index = SearchRecord.index_hint(@search_parameters)
+      Rails.logger.info { "---#{App.name_upcase}:SEARCH_index_HINT: #{@search_index}" }
+
+      # Step 3: Persist chosen index safely
+      update_attribute(:search_index, @search_index)
+
+      # Step 4: Execute MongoDB query with safety guards
+      records = SearchRecord.collection
+                            .find(@search_parameters)
+                            # .hint(@search_index.to_s)
+                            # .max_time_ms(Rails.application.config.max_search_time)
+                            # .limit(FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
+
+      Rails.logger.debug { "---Raw records fetched:\n#{records.ai(index: true, plain: true)}\n" }
+
+      # Step 5: Persist results
+      persist_results(records)
+      Rails.logger.info { "---Persisted #{records.count} records." }
+      
+      # Step 6: Add secondary results (FreeREG only)
+      if App.name == 'FreeREG' && result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS
+        persist_additional_results(secondary_date_results)
+        Rails.logger.info { "---Persisted additional secondary date results." }
+        Rails.logger.info { "---Persisted additional secondary date results #{records.count} records." }
+      end
+
+      # Step 7: UCF search if allowed (ie enable in mongo_config.yml, county and place selected)
+      if can_query_ucf? && result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS
+        records = search_ucf
+        Rails.logger.debug { "---UCF records fetched:\n#{records.ai(index: true, plain: true)}\n" }
+      end
+
+      # Step 8: Return final records
+      Rails.logger.info { "---Search completed with #{records.count} records." }
+      records
+
+    rescue => e
+      # Safety: catch unexpected errors
+      Rails.logger.error { "---Error in SearchQuery#search: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
+      []
+    end
   end
 
   def secondary_date_results
@@ -869,31 +1065,69 @@ class SearchQuery
     # @secondary_search_params[:record_type] = { '$in' => [RecordType::BAPTISM] }
     @search_index = SearchRecord.index_hint(@search_parameters)
     logger.warn("#{App.name_upcase}:SSD_SEARCH_HINT: #{@search_index}")
-    secondary_records = SearchRecord.collection.find(@secondary_search_params).hint(@search_index.to_s).max_time_ms(Rails.application.config.max_search_time).limit(FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
+    secondary_records = SearchRecord.collection
+                                    .find(@secondary_search_params)
+                                    # .hint(@search_index.to_s)
+                                    # .max_time_ms(Rails.application.config.max_search_time)
+                                    # .limit(FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
     secondary_records
   end
 
+  # def search_params
+  #   params = {}
+  #   params.merge!(name_search_params)
+  #   # params.merge!(possible_name_search_params)
+  #   params.merge!(place_search_params)
+  #   params.merge!(record_type_params)
+  #   # params.merge!(possible_last_names_params)
+  #   params.merge!(date_search_params)
+  #   params
+  # end
+
   def search_params
     params = {}
-    params.merge!(name_search_params)
-    # params.merge!(possible_name_search_params)
-    params.merge!(place_search_params)
-    params.merge!(record_type_params)
-    # params.merge!(possible_last_names_params)
-    params.merge!(date_search_params)
+
+    # Step 1: Merge name filters
+    name_params = name_search_params.presence || {}
+    Rails.logger.debug { "---Name search params:\n#{name_params.ai(sort_keys: true, plain: true)}" }
+    params.merge!(name_params)
+
+    # Step 2: Merge place filters
+    place_params = place_search_params.presence || {}
+    Rails.logger.debug { "---Place search params:\n#{place_params.ai(sort_keys: true, plain: true)}" }
+    params.merge!(place_params)
+
+    # Step 3: Merge record type filters
+    record_type_params_hash = record_type_params.presence || {}
+    Rails.logger.debug { "---Record type params:\n#{record_type_params_hash.ai(sort_keys: true, plain: true)}" }
+    params.merge!(record_type_params_hash)
+
+    # Step 4: Merge date filters
+    date_params = date_search_params.presence || {}
+    Rails.logger.debug { "---Date search params:\n#{date_params.ai(sort_keys: true, plain: true)}" }
+    params.merge!(date_params)
+
+    # Final log: full merged params
+    Rails.logger.info { "---Final merged search params:\n#{params.ai(sort_keys: true, plain: true)}" }
+
     params
+  rescue => e
+    Rails.logger.error { "---Error building search_params: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
+    {}
   end
 
   def search_ucf
     start_ucf_time = Time.now.utc
     ucf_records = Place.extract_ucf_records(place_ids)
     ucf_records = filter_ucf_records(ucf_records)
+    
     if ucf_records.present?
       ucf_filtered_count = ucf_records.length
       search_result.ucf_records = ucf_records.map { |sr| sr.id }
     else
       ucf_filtered_count = 0
     end
+    
     self.ucf_filtered_count = ucf_filtered_count
     runtime_ucf = (Time.now.utc - start_ucf_time) * 1000
     self.runtime_ucf = runtime_ucf
@@ -955,13 +1189,31 @@ class SearchQuery
     params
   end
 
+  # def ucf_results
+  #   if self.can_query_ucf?
+  #     SearchRecord.find(self.search_result.ucf_records)
+  #   else
+  #     nil
+  #   end
+  # end
+
   def ucf_results
-    if self.can_query_ucf?
-      SearchRecord.find(self.search_result.ucf_records)
+    if self.can_query_ucf?      
+      ids = self.search_result.ucf_records
+      Rails.logger.debug { "---UCF record IDs: #{ids.ai(plain: true)}" }
+
+      records = SearchRecord.find(ids)
+      Rails.logger.debug { "---Fetched UCF records:\n#{records.ai(index: true, plain: true)}" }
+      records
     else
-      nil
+      Rails.logger.info { "---UCF query not permitted for this search query." }
+      []
     end
+  rescue => e
+    Rails.logger.error { "---Error fetching UCF results: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
+    []
   end
+
 
   # # all this now does is copy the result IDs and persist the new order
   # def new_order(old_query)

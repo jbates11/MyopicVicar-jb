@@ -7,6 +7,7 @@
 # 
 class FilterUcfList
   attr_reader :model_name, :output_directory
+  # JC model_name = Freereg1CsvEntry
 
   # Rules to filter the special characters
   SPECIAL_CHARACTER_LISTS = /[_?*{}\[\]]/

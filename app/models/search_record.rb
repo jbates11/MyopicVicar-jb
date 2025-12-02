@@ -4,14 +4,13 @@ class SearchRecord
   include Mongoid::Timestamps::Created::Short
   include Mongoid::Timestamps::Updated::Short
   include Mongoid::Attributes::Dynamic
+
   require 'name_role'
   require 'record_type'
   require 'emendor'
   require 'ucf_transformer'
   require 'freereg1_translator'
   require 'date_parser'
-
-
   # include Emendor
   SEARCHABLE_KEYS = [:first_name, :last_name]
   SYMBOLS_TO_CLEAN = ['.', ':', ';', "'", '-', '`', '"'].freeze
@@ -31,49 +30,50 @@ class SearchRecord
     WITNESS = 'w'
   end
 
-  belongs_to :freereg1_csv_entry, index: true, optional: true
-  belongs_to :freecen_csv_entry, index: true, optional: true
-  belongs_to :freecen_csv_file, index: true, optional: true
-  belongs_to :freecen_individual, index: true, optional: true
-  belongs_to :freecen1_vld_file, index: true, optional: true
-  belongs_to :place, index: true, optional: true
-  belongs_to :freecen2_place, index: true, optional: true
-  belongs_to :freecen2_place_of_birth, index: true, class_name: 'Freecen2Place', optional: true
-
   field :annotation_ids, type: Array # , :typecast => 'ObjectId'
 
-  #denormalized fields
+  # denormalized fields
   field :asset_id, type: String
-  field :chapman_code, type: String
   field :birth_chapman_code, type: String
   field :birth_place, type: String
-  #many :annotations, :in => :annotation_ids
+  field :chapman_code, type: String
+  # many :annotations, :in => :annotation_ids
 
-  field :record_type, type: String
-  field :search_record_version, type: String
   field :digest, type: String
   field :line_id, type: String
+  field :record_type, type: String
+  field :search_record_version, type: String
 
   # It contains hashes with keys :first_name, :last_name, :role
   field :transcript_names, type: Array # , :required => true
 
   # Date of the entry, whatever kind it is
-  field :transcript_dates, type: Array, default: [] # , :required => false
-
-  field :search_dates, type: Array, default: [] # , :required => false
-
-  field :search_date, type: String
-  field :secondary_search_date, type: String
   field :embargoed, type: Boolean, default: false
-  field :release_year, type: Integer
   field :possible_last_names, type: Array, default: []
-
-  # search fields
-  embeds_many :search_names, :class_name => 'SearchName'
+  field :release_year, type: Integer
+  field :search_date, type: String
+  field :search_dates, type: Array, default: [] # , :required => false
+  field :secondary_search_date, type: String
+  field :transcript_dates, type: Array, default: [] # , :required => false
 
   # derived search fields
   field :location_names, type: Array, default: [] # note used by freecen2; look up the place instead
   field :search_soundex, type: Array, default: []
+
+  # search fields
+  embeds_many :search_names, :class_name => 'SearchName'
+
+  belongs_to :freecen_csv_entry, index: true, optional: true
+  belongs_to :freecen_csv_file, index: true, optional: true
+  belongs_to :freecen_individual, index: true, optional: true
+  belongs_to :freecen1_vld_file, index: true, optional: true
+  belongs_to :freecen2_place_of_birth, index: true, class_name: 'Freecen2Place', optional: true
+  belongs_to :freecen2_place, index: true, optional: true
+  
+  belongs_to :freereg1_csv_entry, index: true, optional: true
+  belongs_to :place, index: true, optional: true
+
+  index({ place_id: 1, locations_names: 1 }, { name: 'place_location' })
 
   CEN_CHAPMAN_INDEXES = {
     'county_ln_rt_sd' => ['chapman_code', 'search_names.last_name', 'record_type', 'search_date'],
@@ -155,11 +155,7 @@ class SearchRecord
     'fn_place_rt_sd_ssd' => ['search_names.first_name', 'place_id', 'record_type', 'search_date', 'secondary_search_date'],
     'fnsdx_place_rt_sd_ssd' => ['search_soundex.first_name', 'place_id', 'record_type', 'search_date', 'secondary_search_date'],
     'place_rt_sd_ssd' => ['place_id', 'record_type', 'search_date', 'secondary_search_date']
-
   }
-
-
-  index({ place_id: 1, locations_names: 1 }, { name: 'place_location' })
 
   class << self
     # This is FreeREG-specific and should be considered
@@ -276,6 +272,28 @@ class SearchRecord
       SearchRecord.where(:freecen_individual_id.exists => true).destroy_all
     end
 
+    # Create all index sets
+    def ensure_all_indexes!
+      Rails.logger.info "Ensuring REG_CHAPMAN_INDEXES..."
+      ensure_indexes!(REG_CHAPMAN_INDEXES)
+
+      Rails.logger.info "Ensuring REG_PLACE_INDEXES..."
+      ensure_indexes!(REG_PLACE_INDEXES)
+
+      Rails.logger.info "Ensuring REG_BASIC_INDEXES..."
+      ensure_indexes!(REG_BASIC_INDEXES)
+
+      Rails.logger.info "✅ All indexes ensured."
+    end
+
+    # Utility method to create indexes from a hash definition
+    def ensure_indexes!(index_definitions)
+      index_definitions.each do |index_name, fields|
+        keys = fields.map { |f| [f, 1] }.to_h
+        Rails.logger.info { "Creating index #{index_name} on #{keys.ai(plain: true)}" }
+        collection.indexes.create_one(keys, name: index_name)
+      end
+    end
 
     def extract_fields(fields, params, current_field)
       if params.is_a?(Hash)
@@ -385,50 +403,115 @@ class SearchRecord
       end
     end
 
+    # def index_hint(search_params)
+    #   p search_params
+    #   search_fields = fields_from_params(search_params)
+    #   p search_fields
+    #   case App.name_downcase
+    #   when 'freebmd'
+    #     candidates = BMD_INDEXES.keys
+    #     index_component = BMD_INDEXES
+    #   when 'freecen'
+    #     if search_fields.include?('place_id')
+    #       p 'place_id'
+    #       candidates = CEN_PLACE_INDEXES.keys
+    #       index_component = CEN_PLACE_INDEXES
+    #     elsif search_fields.include?('freecen2_place_id')
+    #       p 'freecen2_place_id'
+    #       candidates = CEN2_PLACE_INDEXES.keys
+    #       index_component = CEN2_PLACE_INDEXES
+    #     elsif search_fields.include?('chapman_code')
+    #       candidates = CEN_CHAPMAN_INDEXES.keys
+    #       index_component = CEN_CHAPMAN_INDEXES
+    #     elsif search_fields.include?('birth_chapman_code')
+    #       candidates = CEN_CHAPMAN_INDEXES.keys
+    #       index_component = CEN_CHAPMAN_INDEXES
+    #     else
+    #       candidates = CEN_BASIC_INDEXES.keys
+    #       index_component = CEN_BASIC_INDEXES
+    #     end
+    #   when 'freereg'
+    #     if search_fields.include?('place_id')
+    #       candidates = REG_PLACE_INDEXES.keys
+    #       index_component = REG_PLACE_INDEXES
+    #     elsif search_fields.include?('chapman_code')
+    #       candidates = REG_CHAPMAN_INDEXES.keys
+    #       index_component = REG_CHAPMAN_INDEXES
+    #     else
+    #       candidates = REG_BASIC_INDEXES.keys
+    #       index_component = REG_BASIC_INDEXES
+    #     end
+    #   end
+    #   scores = {}
+    #   candidates.each { |name| scores[name] = index_score(name, search_fields, index_component) }
+    #   best = scores.max_by { |_k, v| v}
+    #   best[0]
+    # end
+
     def index_hint(search_params)
-      p search_params
+      Rails.logger.info { "---🔍 Starting index_hint for #{App.name_downcase}" }
+      Rails.logger.debug { "---Search parameters:\n#{search_params.ai(sort_keys: true, plain: true)}" }
+
       search_fields = fields_from_params(search_params)
-      p search_fields
+      Rails.logger.debug { "---Flattened search fields:\n#{search_fields.ai(plain: true)}" }
+
+      candidates = []
+      index_component = {}
+
       case App.name_downcase
       when 'freebmd'
         candidates = BMD_INDEXES.keys
         index_component = BMD_INDEXES
+        Rails.logger.info { "Using BMD_INDEXES (FreeBMD)" }
+
       when 'freecen'
-        if search_fields.include?('place_id')
-          p 'place_id'
-          candidates = CEN_PLACE_INDEXES.keys
-          index_component = CEN_PLACE_INDEXES
-        elsif search_fields.include?('freecen2_place_id')
-          p 'freecen2_place_id'
-          candidates = CEN2_PLACE_INDEXES.keys
-          index_component = CEN2_PLACE_INDEXES
-        elsif search_fields.include?('chapman_code')
-          candidates = CEN_CHAPMAN_INDEXES.keys
-          index_component = CEN_CHAPMAN_INDEXES
-        elsif search_fields.include?('birth_chapman_code')
-          candidates = CEN_CHAPMAN_INDEXES.keys
-          index_component = CEN_CHAPMAN_INDEXES
-        else
-          candidates = CEN_BASIC_INDEXES.keys
-          index_component = CEN_BASIC_INDEXES
-        end
+        Rails.logger.warn { "---No index selection logic defined for FreeCEN yet." }
+        return nil
+
       when 'freereg'
         if search_fields.include?('place_id')
           candidates = REG_PLACE_INDEXES.keys
           index_component = REG_PLACE_INDEXES
+          Rails.logger.info { "---Using REG_PLACE_INDEXES (FreeREG + place_id)" }
+
         elsif search_fields.include?('chapman_code')
           candidates = REG_CHAPMAN_INDEXES.keys
           index_component = REG_CHAPMAN_INDEXES
+          Rails.logger.info { "---Using REG_CHAPMAN_INDEXES (FreeREG + chapman_code)" }
+
         else
           candidates = REG_BASIC_INDEXES.keys
           index_component = REG_BASIC_INDEXES
+          Rails.logger.info { "---Using REG_BASIC_INDEXES (FreeREG fallback)" }
         end
+      else
+        Rails.logger.error { "---Unknown App.name_downcase: #{App.name_downcase}" }
+        return nil
       end
+
       scores = {}
-      candidates.each { |name| scores[name] = index_score(name, search_fields, index_component) }
-      best = scores.max_by { |_k, v| v}
-      best[0]
-    end
+      candidates.each do |name|
+        score = index_score(name, search_fields, index_component)
+        scores[name] = score
+        Rails.logger.debug { "---Index '#{name}' scored #{score}" }
+      end
+
+      best = scores.max_by { |_k, v| v }
+      chosen_index = best&.first
+
+      if chosen_index
+        Rails.logger.info { "---✅ Best index selected: #{chosen_index} (score: #{best.last})" }
+      else
+        Rails.logger.warn { "---⚠️ No suitable index found." }
+      end
+
+      chosen_index
+    rescue => e
+      Rails.logger.error { "---Error in index_hint: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
+      nil
+    end    
+
+
 
     def index_score(index_name, search_fields, index_component)
       fields = index_component[index_name]
@@ -605,11 +688,32 @@ class SearchRecord
     the_digest
   end
 
+  # def contains_wildcard_ucf?
+  #   search_names.detect do |name|
+  #     name.contains_wildcard_ucf?
+  #   end
+  # end
+
   def contains_wildcard_ucf?
-    search_names.detect do |name|
-      name.contains_wildcard_ucf?
+    Rails.logger.info "Checking SearchRecord #{id} for wildcard UCFs..."
+
+    ucf_name = search_names.detect do |name|
+      result = name.contains_wildcard_ucf?  # search_name
+      Rails.logger.debug "Evaluating name: \n#{name.inspect} -> contains_wildcard_ucf? = #{result}"
+      result
     end
+    
+    if ucf_name
+      Rails.logger.info "Wildcard UCF detected in SearchRecord #{id}"
+      Rails.logger.debug "ucf name details: /n#{ucf_name.ai}"
+    else
+      Rails.logger.info "No wildcard UCF detected in SearchRecord #{id}"
+    end
+    
+    Rails.logger.debug "ucf_name: #{ucf_name.ai}"
+    ucf_name
   end
+
 
   def copy_name(name)
     if name

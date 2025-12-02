@@ -9,8 +9,36 @@ class SearchName
 
   embedded_in :search_record
 
+  # def contains_wildcard_ucf?
+  #   result = UcfTransformer.contains_wildcard_ucf?(self.first_name) || UcfTransformer.contains_wildcard_ucf?(self.last_name)
+  #   result
+  # end
+
   def contains_wildcard_ucf?
-    result = UcfTransformer.contains_wildcard_ucf?(self.first_name) || UcfTransformer.contains_wildcard_ucf?(self.last_name)
+    Rails.logger.info "Checking SearchName #{id} for wildcard UCFs..."
+
+    # Collect flags for both names
+    flags = {
+      first_name: UcfTransformer.contains_wildcard_ucf?(first_name),
+      last_name:  UcfTransformer.contains_wildcard_ucf?(last_name)
+    }
+
+    # Log results for each name
+    flags.each do |field, flagged|
+      Rails.logger.debug "#{field.to_s.humanize} '#{send(field)}' flagged? #{flagged}"
+    end
+
+    # Determine overall result
+    result = flags.values.any?
+
+    if result
+      Rails.logger.info "Wildcard UCF detected in SearchName _id: #{id}\n"
+      Rails.logger.debug "SearchName details:\n#{self.ai}\n"
+    else
+      Rails.logger.info "No wildcard UCF detected in SearchName _id: #{id}\n"
+    end
+
     result
   end
+
 end
