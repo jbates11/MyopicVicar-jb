@@ -1,8 +1,11 @@
 FactoryBot.define do
   factory :register do
     register_name { "Baptism Register" }
-    register_type { "baptism" }
+    sequence(:register_type) { 'Baptism' }
+    # register_type { "baptism" }
     status        { "active" }
-    association :church
+
+    association :church, factory: :church
+    # association :church
   end
 end
