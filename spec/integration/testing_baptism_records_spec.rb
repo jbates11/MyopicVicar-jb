@@ -13,13 +13,12 @@ describe 'Baptism SearchName population' do
     record = build(:search_record, :baptism_with_witnesses, freereg1_csv_entry: entry, place: place)
     record.transform
 
-    # ap record.search_names
-    # ap record.search_names.count
-    # puts "Count: #{record.search_names.count}"
-    # puts "baptism date: #{entry.baptism_date}"  
+    record.save! # must make record persistent for count method to work
 
-    # ap record.search_names.map(&:role)
-    # expect(record.search_names.count).to be >= 5
+    # ap record.search_names
+    # puts "Count: #{record.search_names.count}"
+
+    expect(record.search_names.count).to be >= 5
     expect(record.search_names.map(&:role)).to include('ba', 'f', 'm', 'wt')
   end
 end
