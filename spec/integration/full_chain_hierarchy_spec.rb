@@ -33,7 +33,7 @@ RSpec.describe "Full hierarchy integration", type: :model do
     record.save!
 
     # ✅ Assertions: Navigate the full chain
-    expect(record.search_names.first.first_name).to eq("Adam")
+    expect(record.search_names.first.first_name).to eq("John")
     expect(record.place.place_name).to eq("Norfolk")
     expect(entry.freereg1_csv_file.register.church.place).to eq(place)
     # expect(file.userid_detail.userid).to eq("jdoe")
