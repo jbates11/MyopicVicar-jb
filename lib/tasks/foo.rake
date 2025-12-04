@@ -663,6 +663,11 @@ namespace :foo do
 
   desc "Refresh UCF lists on places"
   task :refresh_ucf_lists, [:skip, :sleep_time] => [:environment] do |t, args|
+    # Task name: freereg:refresh_ucf_lists
+    # Arguments:
+    #   skip       → how many places to skip at the start
+    #   sleep_time → pause between processing places
+    #    
     # Default arguments
     args.with_defaults(skip: 0, sleep_time: 0)
 
@@ -675,11 +680,11 @@ namespace :foo do
 
     time_start = Time.now
 
-    # Iterate through places
+    # Iterate through all places with data_present field == true, ordered by county and place name
     Place.data_present.order(chapman_code: :asc, place_name: :asc).no_timeout.each_with_index do |place, i|
       time_place_start = Time.now
 
-      # Skip logic
+      # Skip initial places if skip argument is set
       if i < args.skip.to_i
         Rails.logger.debug "Skipping place ##{i}: #{place.place_name}"
         next
@@ -688,10 +693,10 @@ namespace :foo do
       # Reset UCF list
       place.ucf_list = {}
 
-      # Iterate through files for this place
+      #  Iterate through all Freereg1CsvFile files belonging to this place
       Freereg1CsvFile.where(place_name: place.place_name).order(file_name: :asc).no_timeout.each do |file|
-        # Skip known heavy file
-        if file.file_name == "SOMFSJBA.csv" && file.userid == "YvonneScrivener"
+        # Special case: skip known heavy file
+        if file.file_name == "SOMFSJBA.csv" && file.userid == "YvonneScrivener"  # This file has 48,000 entries
           Rails.logger.warn "Skipping heavy file #{file.file_name} for user #{file.userid}"
           next
         end
@@ -700,11 +705,15 @@ namespace :foo do
         msg = "#{i}\tUpdating\t#{place.chapman_code}\t#{place.place_name}\t#{file.file_name}"
         Rails.logger.info msg
         message_file.puts msg
+        message_file.flush
+        puts "#{msg}"
 
         # Debugging with AwesomePrint
-        ap file.attributes, indent: -2, index: false
+        # puts "--- Freereg1CsvFile file:"
+        # ap file.attributes, indent: -2
+        # ap file.attributes, indent: -2, index: false
 
-        # Update UCF list
+        # Update UCF list with this Freereg1CsvFile file
         begin
           place.update_ucf_list(file)
           file.save!
@@ -714,14 +723,14 @@ namespace :foo do
         end
       end
 
-      # Save place
+      # Save updated place
       begin
         place.save!
       rescue => e
         Rails.logger.error "Error saving place #{place.place_name}: #{e.message}"
       end
 
-      # Sleep between iterations
+      # Sleep between place iterations
       sleep args.sleep_time.to_f if args.sleep_time.to_f > 0
 
       # Place timing info
