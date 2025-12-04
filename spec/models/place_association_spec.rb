@@ -8,21 +8,21 @@ RSpec.describe Place, type: :model do
     file     = create(:freereg1_csv_file, register: register, file_name: "york_baptisms.csv")
 
     # Trace the associations
-    puts "Church:\n#{place.churches.first.ai}"
+    # puts "Church:\n#{place.churches.first.ai}"
     expect(place.churches.first).to eq(church)
     
-    puts "Register:\n#{church.registers.first.ai}"
+    # puts "Register:\n#{church.registers.first.ai}"
     # ap church.registers.first
     expect(church.registers.first).to eq(register)
 
-    puts 'File:'
-    mongoid_ap register.freereg1_csv_files.first
+    # puts 'File:'
+    # mongoid_ap register.freereg1_csv_files.first
     expect(register.freereg1_csv_files.first).to eq(file)
 
     # Direct trace from place to file
     traced_file = place.churches.first.registers.first.freereg1_csv_files.first
-    puts 'traced_file:'
-    mongoid_ap traced_file
+    # puts 'traced_file:'
+    # mongoid_ap traced_file
     expect(traced_file.file_name).to eq("york_baptisms.csv")
   end
 end
