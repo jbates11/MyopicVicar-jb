@@ -667,6 +667,9 @@ namespace :foo do
     # Arguments:
     #   skip       → how many places to skip at the start
     #   sleep_time → pause between processing places
+    # 
+    # This rake task **refreshes the UCF lists** (Uncertain Character Format lists) for each `Place`. 
+    # It rebuilds them from scratch by scanning all `Freereg1CsvFile` records belonging to that place.
     #    
     # Default arguments
     args.with_defaults(skip: 0, sleep_time: 0)
@@ -690,7 +693,7 @@ namespace :foo do
         next
       end
 
-      # Reset UCF list
+      # Reset place UCF list hash
       place.ucf_list = {}
 
       #  Iterate through all Freereg1CsvFile files belonging to this place
@@ -713,7 +716,7 @@ namespace :foo do
         # ap file.attributes, indent: -2
         # ap file.attributes, indent: -2, index: false
 
-        # Update UCF list with this Freereg1CsvFile file
+        # Update UCF list with this Place's Freereg1CsvFile file
         begin
           place.update_ucf_list(file)
           file.save!
