@@ -173,6 +173,7 @@ FactoryBot.define do
     trait :with_symbols_in_names do
       transcript_names do
         [
+          { first_name: "Anne-Marie", last_name: "O'Connor", type: "primary", role: "father" },
           { role: 'ba', type: 'primary', first_name: "John's", last_name: 'Smith-Jones' },
           { role: 'f', type: 'other', first_name: 'Thomas.', last_name: "O'Brien" }
         ]
