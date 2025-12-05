@@ -1109,8 +1109,8 @@ class SearchRecord
   end
 
   def name_contains_symbols?(names)
-    return false if name.blank?
-    SYMBOLS_TO_CLEAN.any? { |sym| name.include?(sym) }
+    return false if names.blank?
+    SYMBOLS_TO_CLEAN.any? { |sym| names.include?(sym) }
   end
 
   def clean_name(transcript_name)
