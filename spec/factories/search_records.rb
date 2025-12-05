@@ -152,6 +152,23 @@ FactoryBot.define do
       end
     end
 
+    trait :marriage_transcript_names do
+      transcript_names do
+        [
+          { first_name: "John", last_name: "Smith", type: "primary", role: "father" },
+          { first_name: "Mary", last_name: "Jones", type: "witness", role: "bridesmaid" }
+        ]
+      end
+
+      # initialize search_names as an empty array
+      search_names { [] }
+
+      # optional attributes for FreeCEN context
+      # freecen_csv_entry_id { nil }
+      # freecen_individual { nil }
+  end
+
+
     # Symbol-related traits
     trait :with_symbols_in_names do
       transcript_names do
