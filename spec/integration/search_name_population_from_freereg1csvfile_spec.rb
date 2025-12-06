@@ -467,19 +467,14 @@ describe 'SearchName population from Freereg1CsvFile' do
     it 'creates both raw and cleaned name variants' do
       # Should have raw + cleaned versions
       primary_names = search_record.search_names.select { |n| n.role == 'ba' && n.type == SearchRecord::PersonType::PRIMARY }
-
+      # ap primary_names
       expect(primary_names.count).to be >= 2
     end
 
     it 'cleans symbols from names' do
+      cleaned = search_record.search_names.detect { |n| n.first_name == 'johns' && n.origin == SearchRecord::Source::TRANSCRIPT }
 
-      # ap search_record.search_names
-
-      cleaned = search_record.search_names.detect { |n| n.first_name == "johns" && n.origin == SearchRecord::Source::TRANSCRIPT }
-
-      # ap cleaned
-      #  JC NOT work
-      # expect(cleaned).to be_present
+      expect(cleaned).to be_present
     end
 
     it 'includes SYMBOLS_TO_CLEAN constant' do
