@@ -1091,15 +1091,15 @@ class SearchRecord
       end
 
       # 5. Handle symbol cleaning
-      if name_contains_symbols?(name_hash['first_name']) || name_contains_symbols?(name_hash['last_name'])
-        cleaned_first_name = clean_name(name_hash['first_name']) if name_hash[:first_name].present?
-        cleaned_last_name  = clean_name(name_hash['last_name'])  if name_hash[:last_name].present?
+      if name_contains_symbols?(name_hash[:first_name]) || name_contains_symbols?(name_hash[:last_name])
+        cleaned_first_name = clean_name(name_hash[:first_name]) if name_hash[:first_name].present?
+        cleaned_last_name  = clean_name(name_hash[:last_name])  if name_hash[:last_name].present?
 
-        sn = search_name(cleaned_first_name, cleaned_last_name, person_type, person_role, person_gender)
-        if sn
-          search_names << sn
-          Rails.logger.info("[SearchRecord] Added cleaned search_name: #{sn.inspect}")
-          # puts "[DEBUG] Added cleaned search_name: #{sn.inspect}"
+        sn_cleaned = search_name(cleaned_first_name, cleaned_last_name, person_type, person_role, person_gender)
+        if sn_cleaned
+          search_names << sn_cleaned
+          Rails.logger.info("[SearchRecord] Added cleaned search_name: #{sn_cleaned.inspect}")
+          # puts "[DEBUG] Added cleaned search_name: #{sn_cleaned.inspect}"
         end
       end
     end
