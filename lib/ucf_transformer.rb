@@ -93,7 +93,9 @@ module UcfTransformer
     end
 
     # Define the set of wildcard UCF characters
-    wildcard_chars = ['*', '_', '?', '{', '}', '[', ']']
+    # wildcard_chars = ['*', '_', '?'] # square brackets display only one record as expect, curly brace NOT work
+    wildcard_chars = ['*', '_', '?', '{', '}']
+    # wildcard_chars = ['*', '_', '?', '{', '}', '[', ']']
 
     # Build a regex that matches any of them
     regex = Regexp.union(wildcard_chars)
@@ -103,9 +105,9 @@ module UcfTransformer
 
     # Debugging output
     Rails.logger.info "[UCF Check] Scanning string: #{name_part.inspect}"
-    Rails.logger.debug "[UCF Check] Wildcard characters: #{wildcard_chars.join(' ')}"
-    Rails.logger.debug "[UCF Check] Regex built: #{regex.inspect}"
-    Rails.logger.debug "[UCF Check] Flagged? #{flagged}"
+    Rails.logger.info "[UCF Check] Wildcard characters: #{wildcard_chars.join(' ')}"
+    Rails.logger.info "[UCF Check] Regex built: #{regex.inspect}"
+    Rails.logger.info "[UCF Check] Flagged? #{flagged}"
 
     flagged
   end
