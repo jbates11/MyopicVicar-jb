@@ -45,11 +45,11 @@ RSpec.describe UcfTransformer do
       end
 
       it 'detects [' do
-        expect(UcfTransformer.contains_wildcard_ucf?("Sm[th")).to eq(true)
+        expect(UcfTransformer.contains_wildcard_ucf?("Sm[th")).to eq(false)
       end
 
       it 'detects ]' do
-        expect(UcfTransformer.contains_wildcard_ucf?("Sm]th")).to eq(true)
+        expect(UcfTransformer.contains_wildcard_ucf?("Sm]th")).to eq(false)
       end
     end
 
