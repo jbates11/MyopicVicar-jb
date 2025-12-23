@@ -52,10 +52,7 @@
   <td>Syndicate Coordinator:</td>
   <%# coord = Syndicate.find_by(syndicate_code: @userid.syndicate).syndicate_coordinator %>
   <%# user_coord = UseridDetail.find_by(userid: coord) %>
-  <td> 
-  <%# "#{user_coord.person_forename} #{user_coord.person_surname} (#{coord})" %> 
-  <%= coordinator_display(@userid) %>
-  </td>
+  <td> <%= coordinator_display(@userid) %> </td>
 </tr>
 <% if @userid.previous_syndicate.present?%>
   <tr>
