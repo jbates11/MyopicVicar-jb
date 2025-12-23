@@ -10,6 +10,20 @@ module UseridDetailsHelper
     result
   end
 
+  def coordinator_display(userid)
+    syndicate_record = Syndicate.find_by(syndicate_code: userid.syndicate)
+    coordinator_code = syndicate_record&.syndicate_coordinator
+    coordinator_user = UseridDetail.find_by(userid: coordinator_code)
+
+    unless coordinator_user.present?
+      return "Syndicate coordinator missing or unknown.".html_safe
+    end
+
+    full_name = "#{coordinator_user.person_forename} #{coordinator_user.person_surname}"
+    formatted = "#{full_name} (#{coordinator_code})"
+
+    formatted.html_safe
+  end
 
   def list_userid_files
     case appname_downcase
