@@ -16,16 +16,16 @@ RSpec.describe UseridDetailsHelper, type: :helper do
     context "when the syndicate exists and coordinator user exists" do
       let!(:syndicate) do
         create(:syndicate,
-          syndicate_code: "SYN001",
-          syndicate_coordinator: "COORD001"
+               syndicate_code: "SYN001",
+               syndicate_coordinator: "COORD001"
         )
       end
 
       let!(:coord_user) do
         create(:userid_detail,
-          userid: "COORD001",
-          person_forename: "Alice",
-          person_surname: "Smith"
+               userid: "COORD001",
+               person_forename: "Alice",
+               person_surname: "Smith"
         )
       end
 
@@ -43,8 +43,8 @@ RSpec.describe UseridDetailsHelper, type: :helper do
     context "when syndicate exists but coordinator user is missing" do
       let!(:syndicate) do
         create(:syndicate,
-          syndicate_code: "SYN001",
-          syndicate_coordinator: "MISSING001"
+               syndicate_code: "SYN001",
+               syndicate_coordinator: "MISSING001"
         )
       end
 
@@ -75,6 +75,5 @@ RSpec.describe UseridDetailsHelper, type: :helper do
     #     expect(result).to eq("Syndicate coordinator missing or unknown.")
     #   end
     # end
-
   end
 end
