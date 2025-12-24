@@ -16,7 +16,7 @@ module UseridDetailsHelper
     coordinator_user = UseridDetail.find_by(userid: coordinator_code)
 
     unless coordinator_user.present?
-      return "Syndicate coordinator missing or unknown.".html_safe
+      return '<span style="color: red;">Syndicate coordinator missing or unknown.</span>'.html_safe
     end
 
     full_name = "#{coordinator_user.person_forename} #{coordinator_user.person_surname}"
