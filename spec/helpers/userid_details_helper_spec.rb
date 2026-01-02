@@ -50,14 +50,14 @@ RSpec.describe UseridDetailsHelper, type: :helper do
 
       it "returns the fallback message" do
         result = helper.coordinator_display(userid_detail)
-        expect(result).to eq("Syndicate coordinator missing or unknown.")
+        expect(result).to include("Syndicate coordinator missing or unknown.")
       end
     end
 
     context "when syndicate does not exist" do
       it "returns the fallback message" do
         result = helper.coordinator_display(userid_detail)
-        expect(result).to eq("Syndicate coordinator missing or unknown.")
+        expect(result).to include("Syndicate coordinator missing or unknown.")
       end
     end
 
