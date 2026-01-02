@@ -2,15 +2,19 @@ class Csvfile < CarrierWave::Uploader::Base
   include Mongoid::Document
   include Mongoid::Timestamps::Created::Short
   include Mongoid::Timestamps::Updated::Short
-  field :userid, type: String
+
+  field :action, type: String
   field :file_name, type: String
   field :process, type: String, default: 'Process tonight'
   field :type_of_field, type: String, default: 'Traditional' # CEN
   field :type_of_processing, type: String, default: 'No POB Warnings' # CEN
-  field :action, type: String
+  field :userid, type: String
+
   # files are stored in Rails.application.config.datafiles
   mount_uploader :csvfile, CsvfileUploader
+  
   PROCESSING_TIME_THRESHOLD = 1000 #basically file size | previously 600 
+  
   def check_for_existing_file_and_save
     # this saves the exiting file in the attic
     process = true
@@ -107,62 +111,68 @@ class Csvfile < CarrierWave::Uploader::Base
   end
 
   def process_the_batch(user)
-    proceed = check_for_existing_file_and_save
-    save if proceed
+    
+    service = CsvfileBatchProcessingRunner.new
+    result  = service.process_batch(csvfile: self, user: user)
 
-    message = "The upload with file name #{file_name} was unsuccessful because #{errors.messages}" if errors.any?
-    return [false, message] if errors.any?
+    [result.was_processed, result.message]
 
-    rename_extention if MyopicVicar::Application.config.template_set == 'freecen'
-    batch = create_batch_unless_exists
-    range = File.join(userid, file_name)
-    batch_processing = PhysicalFile.where(userid: userid, file_name: file_name, waiting_to_be_processed: true).exists?
-    message = 'Your file is already waiting to be processed. It cannot be reprocessed until that one is finished' if batch_processing.present?
-    return [false, message] if batch_processing.present?
+    # proceed = check_for_existing_file_and_save
+    # save if proceed
 
-    size = estimate_size
-    if size.blank? || size.present? && size < 100
-      proceed = false
-      message = "The file #{file_name} either does not exist or is too small to be a valid file."
-      clean_up
-      return [proceed, message]
-    end
+    # message = "The upload with file name #{file_name} was unsuccessful because #{errors.messages}" if errors.any?
+    # return [false, message] if errors.any?
 
-    processing_time = estimate_time
-    case MyopicVicar::Application.config.template_set
-    when 'freereg'
-      if user.person_role == 'trainee'
-        pid1 = Kernel.spawn("rake build:freereg_new_update[\"no_search_records\",\"individual\",\"no\",#{range}]")
-        message = "The csv file #{file_name} is being checked. You will receive an email when it has been completed."
-        process = true
-      elsif processing_time < PROCESSING_TIME_THRESHOLD
-        batch.update_attributes(waiting_to_be_processed: true, waiting_date: Time.now)
-        rake_lock_file = File.join(Rails.root, 'tmp', 'processing_rake_lock_file.txt')
-        processor_initiation_lock_file = File.join(Rails.root, 'tmp', 'processor_initiation_lock_file.txt')
-        #if File.exist?(processor_initiation_lock_file)
-         # message = "The csv file #{file_name} has been sent for processing . You will receive an email when it has been completed."
-        #else
-          initiation_locking_file = File.new(processor_initiation_lock_file, 'w') unless File.exist?(processor_initiation_lock_file)
-          pid1 = Kernel.spawn("rake build:freereg_new_update[\"create_search_records\",\"waiting\",\"no\",\"a-9\"]")
-          message = "The csv file #{file_name} is being processed . You will receive an email when it has been completed."
-        #end
-        process = true
-      elsif processing_time >= PROCESSING_TIME_THRESHOLD
-        batch.destroy #update_attributes(base: true, base_uploaded_date: Time.now, file_processed: false)
-        message = "Your file #{file_name} is not being processed in its current form as it is too large. Your coordinator and the data managers have been informed. Please discuss with them how to proceed. "
-        UserMailer.report_to_data_manger_of_large_file(file_name, userid).deliver_now
-        process = false
-      end
-    when 'freecen'
-      batch.update_attributes(waiting_to_be_processed: true, waiting_date: Time.now)
-      logger.warn("FREECEN:CSV_PROCESSING: Starting rake task for #{userid} #{file_name}")
-      pid1 =  spawn("rake build:freecen_csv_process[\"no_search_records\",\"individual\",\"no\",\"#{range}\",\"'Modern'\",\"#{type_of_processing}\"]")
-      message = "The csv file #{file_name} is being checked. You will receive an email when it has been completed."
-      logger.warn("FREECEN:CSV_PROCESSING: rake task for #{pid1}")
-      process = true
-    end
-    #raise ([process, message]).inspect
-    [process, message]
+    # rename_extention if MyopicVicar::Application.config.template_set == 'freecen'
+    # batch = create_batch_unless_exists
+    # range = File.join(userid, file_name)
+    # batch_processing = PhysicalFile.where(userid: userid, file_name: file_name, waiting_to_be_processed: true).exists?
+    # message = 'Your file is already waiting to be processed. It cannot be reprocessed until that one is finished' if batch_processing.present?
+    # return [false, message] if batch_processing.present?
+
+    # size = estimate_size
+    # if size.blank? || size.present? && size < 100
+    #   proceed = false
+    #   message = "The file #{file_name} either does not exist or is too small to be a valid file."
+    #   clean_up
+    #   return [proceed, message]
+    # end
+
+    # processing_time = estimate_time
+    # case MyopicVicar::Application.config.template_set
+    # when 'freereg'
+    #   if user.person_role == 'trainee'
+    #     pid1 = Kernel.spawn("rake build:freereg_new_update[\"no_search_records\",\"individual\",\"no\",#{range}]")
+    #     message = "The csv file #{file_name} is being checked. You will receive an email when it has been completed."
+    #     process = true
+    #   elsif processing_time < PROCESSING_TIME_THRESHOLD
+    #     batch.update_attributes(waiting_to_be_processed: true, waiting_date: Time.now)
+    #     rake_lock_file = File.join(Rails.root, 'tmp', 'processing_rake_lock_file.txt')
+    #     processor_initiation_lock_file = File.join(Rails.root, 'tmp', 'processor_initiation_lock_file.txt')
+    #     #if File.exist?(processor_initiation_lock_file)
+    #      # message = "The csv file #{file_name} has been sent for processing . You will receive an email when it has been completed."
+    #     #else
+    #       initiation_locking_file = File.new(processor_initiation_lock_file, 'w') unless File.exist?(processor_initiation_lock_file)
+    #       pid1 = Kernel.spawn("rake build:freereg_new_update[\"create_search_records\",\"waiting\",\"no\",\"a-9\"]")
+    #       message = "The csv file #{file_name} is being processed . You will receive an email when it has been completed."
+    #     #end
+    #     process = true
+    #   elsif processing_time >= PROCESSING_TIME_THRESHOLD
+    #     batch.destroy #update_attributes(base: true, base_uploaded_date: Time.now, file_processed: false)
+    #     message = "Your file #{file_name} is not being processed in its current form as it is too large. Your coordinator and the data managers have been informed. Please discuss with them how to proceed. "
+    #     UserMailer.report_to_data_manger_of_large_file(file_name, userid).deliver_now
+    #     process = false
+    #   end
+    # when 'freecen'
+    #   batch.update_attributes(waiting_to_be_processed: true, waiting_date: Time.now)
+    #   logger.warn("FREECEN:CSV_PROCESSING: Starting rake task for #{userid} #{file_name}")
+    #   pid1 =  spawn("rake build:freecen_csv_process[\"no_search_records\",\"individual\",\"no\",\"#{range}\",\"'Modern'\",\"#{type_of_processing}\"]")
+    #   message = "The csv file #{file_name} is being checked. You will receive an email when it has been completed."
+    #   logger.warn("FREECEN:CSV_PROCESSING: rake task for #{pid1}")
+    #   process = true
+    # end
+    # #raise ([process, message]).inspect
+    # [process, message]
   end
 
   def setup_batch_on_replace(original_file_name)
