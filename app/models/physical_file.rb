@@ -2,26 +2,31 @@ class PhysicalFile
   include Mongoid::Document
   include Mongoid::Timestamps::Created::Short
   include Mongoid::Timestamps::Updated::Short
+
   require 'csv'
-  field :file_name, type: String
-  field :userid, type: String
-  field :base,type: Boolean, default: false
-  field :base_uploaded_date, type: DateTime
-  field :change,type: Boolean, default: false
-  field :change_uploaded_date, type: DateTime
-  field :file_processed, type: Boolean, default: false
-  field :file_processed_date, type: DateTime
-  field :waiting_to_be_processed, type: Boolean, default: false
-  field :waiting_date, type: DateTime
+  
   field :action, type: String
+  field :base_uploaded_date, type: DateTime
+  field :base, type: Boolean, default: false
+  field :change_uploaded_date, type: DateTime
+  field :change, type: Boolean, default: false
+  field :file_name, type: String
+  field :file_processed_date, type: DateTime
+  field :file_processed, type: Boolean, default: false
+  field :userid, type: String
+  field :waiting_date, type: DateTime
+  field :waiting_to_be_processed, type: Boolean, default: false
+
   attr_accessor :type
   attr_accessor :county
+
+  index ({ base: 1})
+  index ({ file_processed: 1})
   index ({ userid: 1, file_name: 1, base: 1, base_uploaded_date: 1})
   index ({ userid: 1, file_name: 1, file_processed: 1, file_processed_date: 1})
-  index ({ base: 1})
-  index ({file_processed: 1})
-  index ({ waiting_to_be_processed: 1})
   index ({ userid: 1, waiting_to_be_processed: 1})
+  index ({ waiting_to_be_processed: 1})
+
   class << self
     def id(id)
       where(:id => id)
@@ -59,26 +64,26 @@ class PhysicalFile
     def userid(id)
       where(:userid => id)
     end
-    def remove_waiting_flag(id,file)
+    def remove_waiting_flag(id, file)
       batch = PhysicalFile.userid(id).file_name(file).first
       batch.update_attributes(waiting_to_be_processed: false, waiting_date: nil) if batch.present?
     end
-    def remove_base_flag(id,file)
+    def remove_base_flag(id, file)
       batch = PhysicalFile.userid(id).file_name(file).first
       batch.update_attributes(:base => false, :base_uploaded_date => nil)  if batch.present?
     end
 
-    def add_processed_flag(id,file)
+    def add_processed_flag(id, file)
       batch = PhysicalFile.userid(id).file_name(file).first
       batch.update_attributes(:file_processed => true) if batch.present?
     end
 
-    def delete_document(userid,file_name)
+    def delete_document(userid, file_name)
       physical_file = PhysicalFile.userid(userid).file_name(file_name).first
       physical_file.destroy if physical_file.present?
     end
 
-    def as_csv(batch,sorted,who,county)
+    def as_csv(batch, sorted, who, county)
       header = Array.new
       row = 0
       CSV.generate do |csv|
@@ -127,7 +132,7 @@ class PhysicalFile
   def add_file(batch)
     success = true
     if batch == "base" || batch == "reprocessing" && MyopicVicar::Application.config.template_set == 'freereg'
-      self.update_attributes(:file_processed => false, :file_processed_date => nil,:waiting_to_be_processed => true, :waiting_date => Time.now)
+      self.update_attributes(:file_processed => false, :file_processed_date => nil, :waiting_to_be_processed => true, :waiting_date => Time.now)
     else
       p "why here"
     end
@@ -172,7 +177,7 @@ class PhysicalFile
   def add_file_change_of_owner(batch, type_of_processing)
     success = true
     if batch == "base" || batch == "reprocessing" && MyopicVicar::Application.config.template_set == 'freereg'
-      self.update_attributes(:file_processed => false, :file_processed_date => nil,:waiting_to_be_processed => true, :waiting_date => Time.now)
+      self.update_attributes(:file_processed => false, :file_processed_date => nil, :waiting_to_be_processed => true, :waiting_date => Time.now)
     else
       p "#{batch} - processing type = #{type_of_processing}"
     end
@@ -264,10 +269,10 @@ class PhysicalFile
     if appname.downcase == 'freecen'
       stats_records = Freecen2SiteStatistic.where(year: start_date.year, month: start_date.month).last
       prev_stats_records = Freecen2SiteStatistic.where(year: start_date.year, month: (start_date.month - 1)).last
-      total_csv_records_added = stats_records.records.dig(:total,:total,:csv_entries)
-      total_vld_records_added = stats_records.records.dig(:total, :total,:vld_entries)
-      prev_total_csv_records_added = prev_stats_records.records.dig(:total,:total,:csv_entries)
-      prev_total_vld_records_added = prev_stats_records.records.dig(:total, :total,:vld_entries)
+      total_csv_records_added = stats_records.records.dig(:total, :total, :csv_entries)
+      total_vld_records_added = stats_records.records.dig(:total, :total, :vld_entries)
+      prev_total_csv_records_added = prev_stats_records.records.dig(:total, :total, :csv_entries)
+      prev_total_vld_records_added = prev_stats_records.records.dig(:total, :total, :vld_entries)
       total_records = total_csv_records_added + total_vld_records_added
       prev_total_records = prev_total_csv_records_added + prev_total_vld_records_added
       total_records_added = total_records - prev_total_records
