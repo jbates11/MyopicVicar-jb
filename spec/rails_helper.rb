@@ -10,6 +10,12 @@ require 'rspec/rails'
 # Replaces ActiveRecord
 require 'mongoid'
 
+require 'mongoid-rspec'
+
+require 'capybara/rspec'
+
+require 'database_cleaner-mongoid'
+
 # Mongoid.load! "config/mongoid.yml", :test
 Mongoid.load!(Rails.root.join("config", "mongoid.yml"), :test )
 
