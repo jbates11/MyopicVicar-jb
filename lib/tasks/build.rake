@@ -541,62 +541,6 @@ namespace :build do
     DeleteEntriesRecordsForRemovedBatches.process
   end
 
-  # desc "build search records from files."
-  # task :freereg_new_update,[:search_record,:type,:force,:range] => [:environment] do |t,args|
-  #   # Example arguments: [create_search_records,individual,force_rebuild,userid/filename.csv] or 
-  #   #                    [create_search_records,range     ,force_rebuild,k]
-  #   require 'new_freereg_csv_update_processor'
-  #   @mongodb_bin =   Rails.application.config.mongodb_bin_location
-  #   Mongoid.load!("#{Rails.root}/config/mongoid.yml")
-  #   db = Mongoid.clients[:default][:database]
-  #   hosts = Mongoid.clients[:default][:hosts]
-  #   host = hosts[0]
-
-  #   begin
-  #     if args.type == 'individual'
-  #       p 'FREEREG:CSV_PROCESSING: starting an individual project'
-  #       NewFreeregCsvUpdateProcessor.activate_project(args.search_record, args.type, args.force, args.range)
-
-  #     elsif File.exist?(Rails.root.join('tmp', 'processing_rake_lock_file.txt'))
-  #       p 'processing_rake_lock_file exists. Checking lock status'
-  #       locked = NewFreeregCsvUpdateProcessor.check_file_lock_status
-  #       p 'FREEREG:CSV_PROCESSING: rake lock file already exists. Exiting' unless locked.present?
-  #       if locked.present?
-  #         NewFreeregCsvUpdateProcessor.process_activate_project(args.search_record, args.type, args.force, args.range)
-  #       end
-
-  #     else
-  #       NewFreeregCsvUpdateProcessor.create_rake_lock_file
-  #       NewFreeregCsvUpdateProcessor.process_activate_project(args.search_record, args.type, args.force, args.range)
-  #     end
-
-  #   rescue Exception => msg
-  #     p 'FREEREG:CSV_PROCESSING: rescue the rake task'
-  #     p msg
-  #     p msg.message
-  #     p "#{msg.backtrace.inspect}"
-  #     p 'FREEREG:CSV_PROCESSING: removing rake lock file'
-
-  #     if File.exist?(Rails.root.join('tmp/processing_rake_lock_file.txt'))
-  #       x = File.open(Rails.root.join('tmp/processing_rake_lock_file.txt'))
-  #       x.close
-  #       FileUtils.rm_f(x)
-  #     end
-  #     #if @locking_file.present?
-  #       #@locking_file.close
-  #       #FileUtils.rm_f(@locking_file)
-  #     #end
-
-  #     if File.exist?(Rails.root.join('tmp/processor_initiation_lock_file.txt'))
-  #       p 'FREEREG:CSV_PROCESSING: Removing Initiation lock'
-  #       x = File.open(Rails.root.join('tmp/processor_initiation_lock_file.txt'))
-  #       x.close
-  #       FileUtils.rm_f(x)
-  #     end
-  #     p 'freereg_new_update task done'
-  #   end
-  # end
-
   desc "Build search records from files. 
       Example: [create_search_records,individual,force_rebuild,userid/filename.csv]
                [create_search_records,range,force_rebuild,k]"
