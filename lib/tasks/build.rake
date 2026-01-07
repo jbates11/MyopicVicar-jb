@@ -603,11 +603,12 @@ namespace :build do
 
   task :freereg_new_update, [:search_record, :type, :force, :range] => [:environment] do |_, args|
     require 'new_freereg_csv_update_processor'
+    require 'build/freereg_update_runner' 
 
     Mongoid.load!(Rails.root.join("config/mongoid.yml"))
 
     Build::FreeregUpdateRunner.new(args).run
-    p 'freereg_new_update task done'
+    p 'freereg_new_update task completed successfully'
   end
 
   desc "build recommence search records from files.  Example arguments: [create_search_records,individual,force_rebuild,userid/filename.csv] or [create_search_records,range,force_rebuild,k]"
