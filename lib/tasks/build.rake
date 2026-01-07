@@ -544,7 +544,6 @@ namespace :build do
   desc "Build search records from files. 
       Example: [create_search_records,individual,force_rebuild,userid/filename.csv]
                [create_search_records,range,force_rebuild,k]"
-
   task :freereg_new_update, [:search_record, :type, :force, :range] => [:environment] do |_, args|
     require 'new_freereg_csv_update_processor'
     require 'build/freereg_update_runner' 
