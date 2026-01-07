@@ -1,14 +1,35 @@
 require 'awesome_print'
 
 # Safe pretty-print for Mongoid documents
+# avoids AP’s known limitation with deep nested Mongoid relations.
+# place > church > register > file
 module MongoidDebugHelper
-  def mongoid_ap(document, options = {})
-    if document.respond_to?(:attributes)
-      # Print raw Mongoid attributes to avoid AR hooks
-      ap document.attributes, options.merge(raw: true)
-    else
-      ap document, options.merge(raw: true)
-    end
+  def mongoid_ap(object, options = {})
+    effective_options = { raw: true }.merge(options)
+
+    payload =
+      case
+      when mongoid_document?(object)
+        object.attributes
+      when enumerable_of_mongoid?(object)
+        object.map(&:attributes)
+      else
+        object
+      end
+
+    ap payload, effective_options
+  end
+
+  private
+
+  def mongoid_document?(obj)
+    obj.respond_to?(:attributes)
+  end
+
+  def enumerable_of_mongoid?(obj)
+    obj.is_a?(Enumerable) &&
+      obj.any? &&
+      obj.first.respond_to?(:attributes)
   end
 end
 
