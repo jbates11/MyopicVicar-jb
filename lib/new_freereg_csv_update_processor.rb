@@ -72,28 +72,46 @@ class NewFreeregCsvUpdateProcessor
     locked
   end
 
-  def self.process_activate_project(create_search_records,type,force,range)
-    while PhysicalFile.waiting.exists?
-      p "Locking file: #{@rake_lock_file}"
-      @locking_file.flock(File::LOCK_EX)
-      self.activate_project(create_search_records, type, force, range)
-      sleep(300)
-    end
-    p "Removing lock on #{@rake_lock_file}" 
-    @locking_file.flock(File::LOCK_UN)
-    p 'FREEREG:CSV_PROCESSING: removing rake lock file'
-    if File.exist?(@rake_lock_file)
-      x = File.open(@rake_lock_file)
-      x.close
-      FileUtils.rm_f(@rake_lock_file)
-    end
-    if File.exist?(Rails.root.join('tmp/processor_initiation_lock_file.txt'))
-      p 'FREEREG:CSV_PROCESSING: Removing Initiation lock'
-      x = File.open(Rails.root.join('tmp/processor_initiation_lock_file.txt'))
-      x.close
-      FileUtils.rm_f(x)
-    end
+  # def self.process_activate_project(create_search_records,type,force,range)
+    # while PhysicalFile.waiting.exists?
+    #   p "Locking file: #{@rake_lock_file}"
+    #   @locking_file.flock(File::LOCK_EX)
+
+    #   self.activate_project(create_search_records, type, force, range)
+
+    #   sleep(300) # 5 minutes
+    # end
+
+    # p "Removing lock on #{@rake_lock_file}"
+    # @locking_file.flock(File::LOCK_UN)
+    # p 'FREEREG:CSV_PROCESSING: removing rake lock file'
+
+    # if File.exist?(@rake_lock_file)
+    #   x = File.open(@rake_lock_file)
+    #   x.close
+    #   FileUtils.rm_f(@rake_lock_file)
+    # end
+
+    # if File.exist?(Rails.root.join('tmp/processor_initiation_lock_file.txt'))
+    #   p 'FREEREG:CSV_PROCESSING: Removing Initiation lock'
+    #   x = File.open(Rails.root.join('tmp/processor_initiation_lock_file.txt'))
+    #   x.close
+    #   FileUtils.rm_f(x)
+    # end
+  # end
+
+  def self.process_activate_project(create_search_records, type, force, range, trace_id: SecureRandom.uuid)
+    lock = Csv::RakeFileLock.new
+    Csv::ProjectActivationLoop.call(
+      create_search_records: create_search_records,
+      type:                  type,
+      force:                 force,
+      range:                 range,
+      trace_id:              trace_id,
+      lock:                  lock
+    )
   end
+
 
   def self.activate_project(create_search_records,type,force,range)
     force, create_search_records = NewFreeregCsvUpdateProcessor.convert_to_bolean(create_search_records,force)
@@ -120,7 +138,7 @@ class NewFreeregCsvUpdateProcessor
         @project.total_files += 1
         #@project.communicate_to_managers(@csvfile) if @project.type_of_project == "individual"
       end
-      sleep(100) #if Rails.env.production?
+      sleep(100) #if Rails.env.production? 1.7 minutes
     end
   end
 
