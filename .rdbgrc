@@ -1,0 +1,24 @@
+# ============================
+# Ruby Debugger Configuration
+# ============================
+
+# Skip gems entirely
+config set skip_path /gems/
+
+# Skip ActiveSupport internals
+config set skip_path /active_support/
+
+# Skip Rails autoloaders
+config set skip_path /zeitwerk/
+
+# Skip ActiveModel internals
+config set skip_path /active_model/
+
+# Optional: skip Mongoid internals too
+config set skip_path /mongoid/
+config set skip_path /mongo/
+config set skip_path /origin/
+config set skip_path /moped/
+
+# Skip RSpec internals
+config set skip_path /rspec/
