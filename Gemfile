@@ -63,7 +63,10 @@ group :development, :test do
   gem 'erb-formatter'
   gem 'erb_lint'
 
-  gem 'debug'
+  # gem 'debug' # v1.11.x compatibility issue with rspec mocks and ruby 2.7.8
+  gem 'debug', '~> 1.5.0' # works with ruby 2.7.8 and rails 5.1
+  gem 'irb', '~> 1.3.0'   # works with ruby 2.7.8 and rails 5.1
+  gem 'reline', '~> 0.2.0' # works with ruby 2.7.8 and rails 5.1
 
   gem 'rubocop-capybara'
   gem 'rubocop-performance'
