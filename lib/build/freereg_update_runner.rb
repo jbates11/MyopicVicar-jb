@@ -97,6 +97,7 @@ module Build
 
     def log(message)
       puts "FREEREG:CSV_PROCESSING: #{message}"
+      Rails.logger.info "FREEREG_update_runner: #{message}"
     end
   end
 end

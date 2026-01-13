@@ -265,7 +265,7 @@ class SearchQueriesController < ApplicationController
       response, @search_results, @ucf_results, @result_count = @search_query.get_and_sort_results_for_display
 
       logger.warn("\n#{App.name_upcase}:SEARCH_RESULTS_START:")
-      # logger.ap @search_results
+      logger.ap @search_results
       Rails.logger.debug "This is a debug message"
       Rails.logger.info "This is an info message"
       Rails.logger.warn "This is a warning message"
@@ -274,7 +274,7 @@ class SearchQueriesController < ApplicationController
       logger.warn("#{App.name_upcase}:SEARCH_RESULTS__END:\n")
 
       logger.warn("\n#{App.name_upcase}:UCF_RESULTS_START:")
-      # logger.ap @ucf_results
+      logger.ap @ucf_results
       logger.warn("#{App.name_upcase}:UCF_RESULTS__END:\n")
 
       if !response || @search_results.nil? || @search_query.result_count.nil?

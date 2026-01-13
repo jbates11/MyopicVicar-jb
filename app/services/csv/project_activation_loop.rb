@@ -1,5 +1,6 @@
 class Csv::ProjectActivationLoop
-  DEFAULT_SLEEP_SECONDS = 300
+  # DEFAULT_SLEEP_SECONDS = 300
+  DEFAULT_SLEEP_SECONDS = 30
 
   def self.call(create_search_records:, type:, force:, range:, trace_id: SecureRandom.uuid,
                 logger: Rails.logger, sleeper: ->(seconds) { sleep(seconds) },
@@ -42,7 +43,10 @@ class Csv::ProjectActivationLoop
       while PhysicalFile.waiting.exists?
         @iterations += 1
         log_info "Activation iteration #{@iterations} starting"
-        activate_once
+        
+        # activate_once
+        @sleeper.call(DEFAULT_SLEEP_SECONDS) # debug pause, remove when done
+
         log_info "Activation iteration #{@iterations} finished"
         @sleeper.call(DEFAULT_SLEEP_SECONDS)
       end
@@ -131,7 +135,7 @@ class Csv::ProjectActivationLoop
   def cleanup_initiation_lock_file
     return unless File.exist?(@initiation_lock_file_path)
 
-    log_info "FREEREG:CSV_PROCESSING: Removing Initiation lock"
+    log_info "CSV_PROCESSING: Removing Initiation lock file"
     File.open(@initiation_lock_file_path, 'r') { |f| f.close }
     FileUtils.rm_f(@initiation_lock_file_path)
   end

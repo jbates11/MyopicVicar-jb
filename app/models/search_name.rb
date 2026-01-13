@@ -25,15 +25,15 @@ class SearchName
 
     # Log results for each name
     flags.each do |field, flagged|
-      Rails.logger.debug "#{field.to_s.humanize} '#{send(field)}' flagged? #{flagged}"
+      Rails.logger.info "Log results for each name #{field.to_s.humanize} '#{send(field)}' flagged? #{flagged}"
     end
 
     # Determine overall result
     result = flags.values.any?
 
     if result
-      Rails.logger.info "Wildcard UCF detected in SearchName _id: #{id}\n"
-      Rails.logger.debug "SearchName details:\n#{self.ai}\n"
+      Rails.logger.info "***Wildcard UCF detected in SearchName _id: #{id}\n"
+      Rails.logger.info "SearchName details:\n#{self.ai}\n"
     else
       Rails.logger.info "No wildcard UCF detected in SearchName _id: #{id}\n"
     end

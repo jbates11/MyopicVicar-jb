@@ -105,7 +105,7 @@ module SearchQueriesHelper
       location = "#{place.place_name} : #{church.church_name} : #{RegisterType.display_name(register.register_type)}"
     else
       location =  'Unknown location'
-      logger.warn "#{appname_upcase}::SEARCH::RECORD ID is  #{search_record.id}"
+      logger.warn "---Unknown location #{appname_upcase}::SEARCH::RECORD ID is  #{search_record.id}"
     end
     location
   end

@@ -1047,7 +1047,7 @@ class SearchRecord
   def populate_search_names
     return unless transcript_names.present? && transcript_names.any?
 
-    Rails.logger.info("[SearchRecord] Starting populate_search_names with #{transcript_names.size} transcript_names")
+    Rails.logger.info("\n[SearchRecord] Starting populate_search_names with #{transcript_names.size} transcript_names")
     # puts "[DEBUG] Starting populate_search_names with #{transcript_names.size} transcript_names"
 
     transcript_names.each do |name_hash|
@@ -1104,7 +1104,7 @@ class SearchRecord
       end
     end
 
-    Rails.logger.info("[SearchRecord] Finished populate_search_names with #{search_names.size} total search_names")
+    Rails.logger.info("[SearchRecord] Finished populate_search_names with #{search_names.size} total search_names\n")
     # puts "[DEBUG] Finished populate_search_names with #{search_names.size} total search_names"
   end
 

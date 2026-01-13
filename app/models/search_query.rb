@@ -1044,7 +1044,7 @@ class SearchQuery
       # Step 7: UCF search if allowed (ie enable in mongo_config.yml, county and place selected)
       if can_query_ucf? && result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS
         records = search_ucf
-        Rails.logger.debug { "---UCF records fetched:\n#{records.ai(index: true, plain: true)}\n" }
+        Rails.logger.info { "---UCF records fetched:\n#{records.ai(index: true, plain: true)}\n" }
       end
 
       # Step 8: Return final records

@@ -59,16 +59,22 @@ class NewFreeregCsvUpdateProcessor
   end
 
   def self.create_rake_lock_file
+    # class instance variables created
     @rake_lock_file = Rails.root.join('tmp', 'processing_rake_lock_file.txt')
     @locking_file = File.new(@rake_lock_file, 'w')
+    
     p "FREEREG:CSV_PROCESSING: Created rake lock file #{@rake_lock_file} and processing files"
+    Rails.logger.info "FREEREG:CSV_PROCESSING: Created rake lock file #{@rake_lock_file} and processing files"
   end
 
   def self.check_file_lock_status
+    # class instance variables created
     @rake_lock_file = Rails.root.join('tmp', 'processing_rake_lock_file.txt')
     @locking_file = File.open(@rake_lock_file)
+
     locked = @locking_file.flock(File::LOCK_EX | File::LOCK_NB)
     p "processor lock file status: #{locked}"
+    Rails.logger.info "FREEREG:CSV_PROCESSING: Processor lock file status: #{locked}"
     locked
   end
 

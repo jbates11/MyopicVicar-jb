@@ -9,19 +9,19 @@ class Csv::RakeFileLock
   end
 
   def lock
-    @logger.info "Locking file: #{@path}"
+    @logger.info "CSV_PROCESSING: Locking rake lock file: #{@path}"
     @file.flock(File::LOCK_EX)
   end
 
   def unlock
-    @logger.info "Unlocking file: #{@path}"
+    @logger.info "CSV_PROCESSING: Unlocking rake lock file: #{@path}"
     @file.flock(File::LOCK_UN)
   end
 
   def cleanup
     return unless File.exist?(@path)
 
-    @logger.info "Removing rake lock file #{@path}"
+    @logger.info "CSV_PROCESSING: Removing rake lock file #{@path}"
     @file.close
     FileUtils.rm_f(@path)
   end

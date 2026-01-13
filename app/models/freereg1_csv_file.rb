@@ -384,7 +384,7 @@ class Freereg1CsvFile
 
     def freereg1_csv_file_valid?(freereg1_csv_file)
       if freereg1_csv_file.blank?
-        logger.warn("#{App.name.upcase}:FREEREG_FILE_ERROR: entry had no file")
+        logger.warn("#{App.name.upcase}:FREEREG_FILE_ERROR: #{freereg1_csv_file} entry had no file")
         result = false
       elsif Freereg1CsvFile.find_by(id: freereg1_csv_file).present?
         result = true

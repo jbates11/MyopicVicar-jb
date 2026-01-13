@@ -88,7 +88,7 @@ module UcfTransformer
   def self.contains_wildcard_ucf?(name_part)
     # Early return if blank
     if name_part.blank?
-      Rails.logger.debug "[UCF Check] Received blank input"
+      Rails.logger.info "[UCF Check] Received blank input. Exit udf detection routine."
       return false
     end
 
