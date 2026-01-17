@@ -49,18 +49,18 @@ module Build
     end
 
     def process_with_existing_lock
-      log "Lock file exists. Checking lock status"
+      log "Rake lock file exists. Checking lock status"
 
       if NewFreeregCsvUpdateProcessor.check_file_lock_status.present?
-        log "Lock is valid. Continuing processing"
+        log "Rake lock is valid. Continuing processing"
         process_project
       else
-        log "Lock file exists but is invalid. Exiting"
+        log "Rake lock file exists but is invalid. Exiting"
       end
     end
 
     def process_with_new_lock
-      log "Creating new lock file"
+      log "call create_rake_lock_file method to create new rake lock file"
       NewFreeregCsvUpdateProcessor.create_rake_lock_file
       process_project
     end

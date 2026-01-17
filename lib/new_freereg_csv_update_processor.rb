@@ -64,7 +64,7 @@ class NewFreeregCsvUpdateProcessor
     @locking_file = File.new(@rake_lock_file, 'w')
     
     p "FREEREG:CSV_PROCESSING: Created rake lock file #{@rake_lock_file} and processing files"
-    Rails.logger.info "FREEREG:CSV_PROCESSING: Created rake lock file #{@rake_lock_file} and processing files"
+    Rails.logger.info "FREEREG:CSV_PROCESSING create_rake_lock_file: Created rake lock file #{@rake_lock_file} and processing files"
   end
 
   def self.check_file_lock_status
@@ -74,7 +74,7 @@ class NewFreeregCsvUpdateProcessor
 
     locked = @locking_file.flock(File::LOCK_EX | File::LOCK_NB)
     p "processor lock file status: #{locked}"
-    Rails.logger.info "FREEREG:CSV_PROCESSING: Processor lock file status: #{locked}"
+    Rails.logger.info "FREEREG:CSV_PROCESSING check_file_lock_status: Processor lock file status: #{locked}"
     locked
   end
 
@@ -118,22 +118,37 @@ class NewFreeregCsvUpdateProcessor
     )
   end
 
-
+  # This class method orchestrates a batch “CSV processing project”
   def self.activate_project(create_search_records,type,force,range)
+    Rails.logger.info "\n--- Starting activate_project method"
+    
+    # Normalize flags to true/false
     force, create_search_records = NewFreeregCsvUpdateProcessor.convert_to_bolean(create_search_records,force)
+
+    # Build the project context: configuration, flags, range, and start time
     @project = NewFreeregCsvUpdateProcessor.new(Rails.application.config.datafiles,create_search_records,type,force,range,Time.new)
+
+    # creates an independent log file = update_freereg_messages_timestamp.log
     @project.write_log_file("Started csv file processor project. #{@project.inspect} using website #{Rails.application.config.website}. <br>")
+
+    # Discover which CSV files should be processed for this project
     @csvfiles = CsvFiles.new
     success, files_to_be_processed = @csvfiles.get_the_files_to_be_processed(@project)
+
     if !success || (files_to_be_processed.present? && files_to_be_processed.length == 0)
       @project.write_log_file("processing terminated as we have no records to process. <br>")
       return
     end
+
     @project.write_log_file("#{files_to_be_processed.length}\t files selected for processing. <br>")
+    
     files_to_be_processed.each do |file|
       @csvfile = CsvFile.new(file)
+
       @success, @records_processed, @data_errors = @csvfile.a_single_csv_file_process(@project)
+
       if @success
+
         @project.total_records = @project.total_records + @records_processed unless @records_processed.nil?
         @project.total_data_errors = @project.total_data_errors + @data_errors if @data_errors.present?
         @project.total_files += 1
@@ -144,8 +159,11 @@ class NewFreeregCsvUpdateProcessor
         @project.total_files += 1
         #@project.communicate_to_managers(@csvfile) if @project.type_of_project == "individual"
       end
-      sleep(100) #if Rails.env.production? 1.7 minutes
+
+      # sleep(100) #if Rails.env.production? 1.7 minutes
     end
+
+    Rails.logger.info "--- Activate_project method completed\n"
   end
 
   def self.delete_all
@@ -162,6 +180,9 @@ class NewFreeregCsvUpdateProcessor
   end
 
   def communicate_to_managers(csvfile)
+    p "communicating to_managersr"
+    Rails.logger.info "\n--- Sending email, communicating to_managers"
+
     records = @total_records
     average_time = records == 0 ? 0 : (Time.new.to_i - @project_start_time.to_i) * 1000 / records
     write_messages_to_all("Created  #{records} entries at an average time of #{average_time}ms per record at #{Time.new}. <br>", false)
@@ -355,13 +376,19 @@ class CsvFile < CsvFiles
 
   def a_single_csv_file_process(project)
     #p "single csv file"
+    Rails.logger.info "\n---Starting a single csv file process"
+
     begin
       @success = true
       project.member_message_file = self.define_member_message_file
       @file_start = Time.new
+
       p "FREEREG:CSV_PROCESSING: Started on the file #{@header[:file_name]} for #{@header[:userid]} at #{@file_start}"
+      Rails.logger.info "FREEREG:CSV_PROCESSING: Started on the file #{@header[:file_name]} for #{@header[:userid]} at #{@file_start}"
+
       project.write_log_file("******************************************************************* <br>")
       project.write_messages_to_all("Started on the file #{@header[:file_name]} for #{@header[:userid]} at #{@file_start}. <p>", true)
+
       @success, message = self.ensure_processable?(project) unless project.force_rebuild
       #p "finished file checking #{message}. <br>"
       return false, message unless @success
@@ -409,6 +436,7 @@ class CsvFile < CsvFiles
       @records_processed = e.message
       @data_errors = nil
     end
+    Rails.logger.info "---A single csv file process completed.\n"
     [@success, @records_processed, @data_errors]
   end
 
@@ -543,6 +571,7 @@ class CsvFile < CsvFiles
   end
 
   def clean_up_physical_files_after_failure(message)
+
     batch = PhysicalFile.userid(@userid).file_name(@file_name).first
     return true if batch.blank?
 
@@ -592,6 +621,9 @@ class CsvFile < CsvFiles
   end
 
   def communicate_failure_to_member(project, message)
+    p "communicating failure_to_member"
+    Rails.logger.info "\n--- Sending email, communicating failure_to_member"
+
     file = project.member_message_file
     file.close
     UserMailer.batch_processing_failure(file,@userid,@file_name).deliver_now unless project.type_of_project == "special_selection_1" ||  project.type_of_project == "special_selection_2"
@@ -600,7 +632,9 @@ class CsvFile < CsvFiles
   end
 
   def communicate_file_processing_results(project)
-    #  p "communicating success"
+    p "communicating success"
+    Rails.logger.info "\n---Sending email, communicating success"
+
     file = project.member_message_file
     file.close
     UserMailer.batch_processing_success(file,@header[:userid],@header[:file_name]).deliver_now unless project.type_of_project == "special_selection_1" ||  project.type_of_project == "special_selection_2"

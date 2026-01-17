@@ -104,10 +104,10 @@ module UcfTransformer
     flagged = name_part.match?(regex)
 
     # Debugging output
-    Rails.logger.info "[UCF Check] Scanning string: #{name_part.inspect}"
+    Rails.logger.info "\n[UCF Check] Scanning string: #{name_part.inspect}"
     Rails.logger.info "[UCF Check] Wildcard characters: #{wildcard_chars.join(' ')}"
     Rails.logger.info "[UCF Check] Regex built: #{regex.inspect}"
-    Rails.logger.info "[UCF Check] Flagged? #{flagged}"
+    Rails.logger.info "[UCF Check] Flagged? #{flagged}\n"
 
     flagged
   end

@@ -44,8 +44,8 @@ class Csv::ProjectActivationLoop
         @iterations += 1
         log_info "Activation iteration #{@iterations} starting"
         
-        # activate_once
-        @sleeper.call(DEFAULT_SLEEP_SECONDS) # debug pause, remove when done
+        activate_once
+        # @sleeper.call(DEFAULT_SLEEP_SECONDS) # debug pause, remove when done
 
         log_info "Activation iteration #{@iterations} finished"
         @sleeper.call(DEFAULT_SLEEP_SECONDS)

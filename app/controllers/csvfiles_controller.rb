@@ -36,7 +36,10 @@ class CsvfilesController < ApplicationController
       redirect_back(fallback_location: new_csvfile_path, notice: message) && return
     end
 
+    # Start the batch processing workflow
+    logger.warn("\n#{appname_upcase}:CSV PROCESSING: *** csvfiles - Start the batch processing workflow ")
     proceed, message = @csvfile.process_the_batch(@user)
+
     @csvfile.delete
     unless proceed
       logger.warn("#{appname_upcase}:CSV_PROCESSING: " + message)

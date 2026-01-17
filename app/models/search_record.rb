@@ -450,11 +450,11 @@ class SearchRecord
     # end
 
     def index_hint(search_params)
-      Rails.logger.info { "---🔍 Starting index_hint for #{App.name_downcase}" }
-      Rails.logger.debug { "---Search parameters:\n#{search_params.ai(sort_keys: true, plain: true)}" }
+      Rails.logger.info { "\n---🔍 [SearchResult] Starting index_hint for #{App.name_downcase}" }
+      Rails.logger.info { "---Search parameters:\n#{search_params.ai(sort_keys: true, plain: true)}" }
 
       search_fields = fields_from_params(search_params)
-      Rails.logger.debug { "---Flattened search fields:\n#{search_fields.ai(plain: true)}" }
+      Rails.logger.info { "---Flattened search fields:\n#{search_fields.ai(plain: true)}" }
 
       candidates = []
       index_component = {}
@@ -466,8 +466,27 @@ class SearchRecord
         Rails.logger.info { "Using BMD_INDEXES (FreeBMD)" }
 
       when 'freecen'
-        Rails.logger.warn { "---No index selection logic defined for FreeCEN yet." }
-        return nil
+        if search_fields.include?('place_id')
+          candidates = CEN_PLACE_INDEXES.keys
+          index_component = CEN_PLACE_INDEXES
+          Rails.logger.info { "[index_hint] freecen → CEN_PLACE_INDEXES (place_id)" }
+
+        elsif search_fields.include?('freecen2_place_id')
+          candidates = CEN2_PLACE_INDEXES.keys
+          index_component = CEN2_PLACE_INDEXES
+          Rails.logger.info { "[index_hint] freecen → CEN2_PLACE_INDEXES (freecen2_place_id)" }
+
+        elsif search_fields.include?('chapman_code') ||
+          search_fields.include?('birth_chapman_code')
+          candidates = CEN_CHAPMAN_INDEXES.keys
+          index_component = CEN_CHAPMAN_INDEXES
+          Rails.logger.info { "[index_hint] freecen → CEN_CHAPMAN_INDEXES (chapman_code/birth_chapman_code)" }
+
+        else
+          candidates = CEN_BASIC_INDEXES.keys
+          index_component = CEN_BASIC_INDEXES
+          Rails.logger.info { "[index_hint] freecen → CEN_BASIC_INDEXES (fallback)" }
+        end
 
       when 'freereg'
         if search_fields.include?('place_id')
@@ -501,9 +520,9 @@ class SearchRecord
       chosen_index = best&.first
 
       if chosen_index
-        Rails.logger.info { "---✅ Best index selected: #{chosen_index} (score: #{best.last})" }
+        Rails.logger.info { "---✅ Best index selected: #{chosen_index} (score: #{best.last})\n" }
       else
-        Rails.logger.warn { "---⚠️ No suitable index found." }
+        Rails.logger.warn { "---⚠️ No suitable index found.\n" }
       end
 
       chosen_index

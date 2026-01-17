@@ -551,7 +551,8 @@ namespace :build do
     Mongoid.load!(Rails.root.join("config/mongoid.yml"))
 
     Build::FreeregUpdateRunner.new(args).run
-    p 'freereg_new_update task completed successfully'
+    p 'freereg_new_update rake task completed successfully'
+    Rails.logger.info "\n--- Freereg_new_update rake task completed successfully ---\n"
   end
 
   desc "build recommence search records from files.  Example arguments: [create_search_records,individual,force_rebuild,userid/filename.csv] or [create_search_records,range,force_rebuild,k]"

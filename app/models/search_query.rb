@@ -202,25 +202,66 @@ class SearchQuery
       rec
     end
 
+    # def does_the_entry_exist?(search_record)
+    #   case App.name.downcase
+    #   when 'freereg'
+    #     entry = search_record[:freereg1_csv_entry_id]
+    #     if entry.present?
+    #       actual_entry = Freereg1CsvEntry.find_by(_id: entry)
+    #       if actual_entry.present?
+    #         proceed, _place, _church, _register = actual_entry.location_from_entry
+    #       else
+    #         proceed = false
+    #       end
+    #     else
+    #       proceed = false
+    #     end
+    #   when 'freecen'
+    #     proceed = true
+    #   end
+    #   proceed
+    # end
+
     def does_the_entry_exist?(search_record)
-      case App.name.downcase
-      when 'freereg'
-        entry = search_record[:freereg1_csv_entry_id]
-        if entry.present?
-          actual_entry = Freereg1CsvEntry.find_by(_id: entry)
-          if actual_entry.present?
-            proceed, _place, _church, _register = actual_entry.location_from_entry
-          else
-            proceed = false
-          end
-        else
-          proceed = false
-        end
-      when 'freecen'
-        proceed = true
+      Rails.logger.info  "[SearchQuery] does_the_entry_exist? called"
+      Rails.logger.info { "[SearchQuery] search_record(s): #\n{search_record.ai}" }
+
+      app = App.name.downcase
+      Rails.logger.info { "[SearchQuery] app=#{app.inspect}" }
+
+      if app == 'freecen'
+        Rails.logger.info "[SearchQuery] App is FreeCEN -> returning true"
+        return true
       end
+
+      unless app == 'freereg'
+        Rails.logger.info "[SearchQuery] Unsupported app '#{app}' -> returning false"
+        return false
+      end
+
+      entry_id = search_record[:freereg1_csv_entry_id]
+      Rails.logger.info { "[SearchQuery] extracted entry_id= #{entry_id.inspect}\n" }
+
+      if entry_id.blank?
+        Rails.logger.info "[SearchQuery] entry_id is blank -> returning false"
+        return false
+      end
+
+      actual_entry = Freereg1CsvEntry.find_by(_id: entry_id)
+      Rails.logger.info { "[SearchQuery] actual_entry: #\n{actual_entry.ai}" }
+
+      if actual_entry.blank?
+        Rails.logger.info "[SearchQuery] No Freereg1CsvEntry found -> returning false"
+        return false
+      end
+
+      proceed, _place, _church, _register = actual_entry.location_from_entry
+      Rails.logger.info  "[SearchQuery] location_from_entry returned proceed=#{proceed.inspect}"
+      Rails.logger.info { "[SearchQuery] place=#{_place.ai}, church=#{_church.ai}, register=#{_register.ai}" }
+
       proceed
     end
+
   end
 
   ############################################################################# instance methods #####################################################
@@ -500,43 +541,43 @@ class SearchQuery
 
     # Step 1: Extract values
     search_results = self.search_result.records.values.compact
-    Rails.logger.debug { "---Step 1: Extracted raw results (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
+    Rails.logger.info { "[GetSortDisplay] ---Step 1: Extracted raw results (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
 
     # Step 2: Filter name types
     search_results = filter_name_types(search_results)
-    Rails.logger.debug { "---Step 2: After filter_name_types (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
+    Rails.logger.info { "[GetSortDisplay] ---Step 2: After filter_name_types (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
 
     # Step 3: Filter embargoed
     search_results = filter_embargoed(search_results)
-    Rails.logger.debug { "---Step 3: After filter_embargoed (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
+    Rails.logger.info { "[GetSortDisplay] ---Step 3: After filter_embargoed (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
 
     # Step 4: Census additional fields (only for FreeCEN)
     if MyopicVicar::Application.config.template_set == 'freecen'
       search_results = filter_census_addional_fields(search_results)
-      Rails.logger.debug { "---Step 4: After filter_census_addional_fields (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
+      Rails.logger.info { "[GetSortDisplay] ---Step 4: After filter_census_addional_fields (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
     end
 
     # Step 5: Count results safely
     result_count = search_results.present? ? search_results.length : 0
-    Rails.logger.info { "---Step 5: Result count = #{result_count}" }
+    Rails.logger.info { "[GetSortDisplay] ---Step 5: Result count = #{result_count}" }
 
     # Step 6: Sort results safely
     search_results = sort_results(search_results) if search_results.present?
-    Rails.logger.debug { "---Step 6: After sort_results (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
+    Rails.logger.info { "[GetSortDisplay] ---Step 6: After sort_results (#{search_results.size})\n#{search_results.ai(index: false, plain: true)}" }
 
     # Step 7: Handle UCF results safely
     ucf_results = self.ucf_results.presence || []
-    Rails.logger.debug { "---Step 7: UCF results (#{ucf_results.size})\n#{ucf_results.ai(index: false, plain: true)}" }
+    Rails.logger.info { "[GetSortDisplay] ---Step 7: UCF results (#{ucf_results.size})\n#{ucf_results.ai(index: false, plain: true)}" }
 
     # Step 8: Wrap results in SearchRecord objects
     wrapped_results = search_results.map { |h| SearchRecord.new(h) }
-    Rails.logger.debug { "---Step 8: Wrapped results into SearchRecord objects\n#{wrapped_results.ai(index: false, plain: true)}" }
+    Rails.logger.info { "[GetSortDisplay] ---Step 8: Wrapped results into SearchRecord objects\n#{wrapped_results.ai(index: false, plain: true)}" }
 
     # Final return
     response = true
     return response, wrapped_results, ucf_results, result_count
   rescue => e
-    Rails.logger.error { "---Error in get_and_sort_results_for_display: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
+    Rails.logger.error { "[GetSortDisplay] ---Error in get_and_sort_results_for_display: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
     return false
   end
 
@@ -712,7 +753,7 @@ class SearchQuery
     name_params = {}
 
     begin
-      Rails.logger.debug { "---Building name search params..." }
+      Rails.logger.debug { "\n---Building name search params..." }
 
       if query_contains_wildcard?
         Rails.logger.info { "---Wildcard search detected." }
@@ -729,8 +770,9 @@ class SearchQuery
 
         params['search_names'] = { '$elemMatch' => name_params }
 
+      # search_query model field :fuzzy, type: Boolean
       elsif fuzzy
-        Rails.logger.info { "---Fuzzy search enabled." }
+        Rails.logger.info { "\n---Fuzzy search enabled." }
 
         if first_name.present?
           name_params['first_name'] = Text::Soundex.soundex(first_name)
@@ -745,13 +787,14 @@ class SearchQuery
         params['search_soundex'] = { '$elemMatch' => name_params }
 
       else
-        Rails.logger.info { "---Exact name search (lowercase match)." }
+        Rails.logger.info { "\n---Exact name search (lowercase match)." }
 
         if first_name.present?
           name_params['first_name'] = first_name.downcase
           Rails.logger.debug { "---Exact first_name: #{name_params['first_name']}" }
         end
 
+        # search_query model field :no_surname, type: Boolean
         if last_name.present? && !no_surname
           name_params['last_name'] = last_name.downcase
           Rails.logger.debug { "---Exact last_name: #{name_params['last_name']}" }
@@ -801,6 +844,8 @@ class SearchQuery
 
   def persist_additional_results(results)
     return unless results
+    Rails.logger.info { "[persist_additional_results] Receiving and processing #{results.count} raw search results" }
+
 
     # finally extract the records IDs and persist them
     records = {}
@@ -815,39 +860,70 @@ class SearchQuery
         search_record.delete if search_record.present?
       end
     end
+    
     self.search_result.records = self.search_result.records.merge(records)
     self.result_count = self.search_result.records.length
     self.runtime_additional = (Time.now.utc - self.updated_at) * 1000
-    self.save
+    if self.save
+      Rails.logger.info { "[persist_additional_results] Search results persisted successfully. Total: #{self.result_count}" }
+    else
+      Rails.logger.error { "[persist_additional_results] Failed to save SearchQuery with results:\n#{self.errors.full_messages.ai(plain: true)}" }
+    end
   end
+
+  # def persist_results(results)
+  #   return unless results
+  #   # finally extract the records IDs and persist them
+  #   records = {}
+  #   results.each do |rec|
+  #     record = rec # should be a SearchRecord despite Mongoid bug
+  #     rec_id = record['_id'].to_s
+  #     record = SearchQuery.add_birth_place_when_absent(record) if record[:birth_place].blank? && App.name.downcase == 'freecen'
+  #     record = SearchQuery.add_search_date_when_absent(record) if record[:search_date].blank?
+  #     records[rec_id] = record
+  #     proceed = SearchQuery.does_the_entry_exist?(rec)
+  #     if proceed
+  #       rec_id = record['_id'].to_s
+  #       record = SearchQuery.add_birth_place_when_absent(record) if record[:birth_place].blank? && App.name.downcase == 'freecen'
+  #       record = SearchQuery.add_search_date_when_absent(record) if record[:search_date].blank?
+  #       records[rec_id] = record
+  #     else
+  #       search_record = SearchRecord.find_by(_id: rec['_id'].to_s)
+  #       search_record.delete if search_record.present?
+  #     end
+  #   end
+  #   self.search_result = SearchResult.new
+  #   self.search_result.records = records
+  #   self.result_count = records.length
+  #   self.runtime = (Time.now.utc - self.updated_at) * 1000
+  #   self.day = Time.now.strftime('%F')
+  #   self.save
+  # end
 
   def persist_results(results)
     return unless results
-    # finally extract the records IDs and persist them
+    Rails.logger.info { "[persist_results] Receiving and processing #{results.count} raw search results" }
+
     records = {}
+
     results.each do |rec|
-      record = rec # should be a SearchRecord despite Mongoid bug
-      rec_id = record['_id'].to_s
-      record = SearchQuery.add_birth_place_when_absent(record) if record[:birth_place].blank? && App.name.downcase == 'freecen'
-      record = SearchQuery.add_search_date_when_absent(record) if record[:search_date].blank?
-      records[rec_id] = record
-      proceed = SearchQuery.does_the_entry_exist?(rec)
-      if proceed
-        rec_id = record['_id'].to_s
-        record = SearchQuery.add_birth_place_when_absent(record) if record[:birth_place].blank? && App.name.downcase == 'freecen'
-        record = SearchQuery.add_search_date_when_absent(record) if record[:search_date].blank?
-        records[rec_id] = record
-      else
-        search_record = SearchRecord.find_by(_id: rec['_id'].to_s)
-        search_record.delete if search_record.present?
-      end
+      result = SearchRecordProcessor.call(rec, normalize: true)
+
+      records[result.id] = result.record if result.kept?
     end
+
     self.search_result = SearchResult.new
+
     self.search_result.records = records
     self.result_count = records.length
     self.runtime = (Time.now.utc - self.updated_at) * 1000
     self.day = Time.now.strftime('%F')
-    self.save
+
+    if self.save
+      Rails.logger.info { "[persist_results] Search results persisted successfully. Total: #{self.result_count}" }
+    else
+      Rails.logger.error { "[persist_results] Failed to save SearchQuery with results:\n#{self.errors.full_messages.ai(plain: true)}" }
+    end
   end
 
   def place_search?
@@ -986,25 +1062,18 @@ class SearchQuery
   # def search
   #   @search_parameters = search_params
   #   @search_index = SearchRecord.index_hint(@search_parameters)
+    
   #   logger.warn("#{App.name_upcase}:SEARCH_HINT: #{@search_index}")
   #   logger.warn("#{App.name_upcase}:SEARCH_PARAMETERS: #{@search_parameters}")
+
   #   update_attribute(:search_index, @search_index)
-       
-  #   records = SearchRecord.collection.find(@search_parameters)#.hint(@search_index.to_s).max_time_ms(Rails.application.config.max_search_time).limit(FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
+    
+  #   records = SearchRecord.collection.find(@search_parameters).hint(@search_index.to_s).max_time_ms(Rails.application.config.max_search_time).limit(FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
+    
   #   persist_results(records)
-    
-  #   logger.warn("\n#{App.name_upcase}:RECORD_START:")
-  #   logger.ap SearchRecord.collection.find(@search_parameters), :warn
-  #   logger.warn("#{App.name_upcase}:RECORD_END:\n")
-
   #   persist_additional_results(secondary_date_results) if App.name == 'FreeREG' && (result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
-    
+
   #   records = search_ucf if can_query_ucf? && result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS
-
-  #   logger.warn("\n#{App.name_upcase}:RECORD_START2:")
-  #   logger.ap search_ucf, :warn
-  #   logger.warn("#{App.name_upcase}:RECORD_END2:\n")
-
   #   records
   # end
 
@@ -1012,11 +1081,11 @@ class SearchQuery
     begin
       # Step 1: Gather search parameters
       @search_parameters = search_params
-      Rails.logger.debug { "---Search parameters:\n#{@search_parameters.ai(sort_keys: true, plain: true)}" }
+      Rails.logger.info { "\n---Step 1-Search parameters:\n#{@search_parameters.ai(sort_keys: true, plain: true)}" }
 
       # Step 2: Determine index hint
       @search_index = SearchRecord.index_hint(@search_parameters)
-      Rails.logger.info { "---#{App.name_upcase}:SEARCH_index_HINT: #{@search_index}" }
+      Rails.logger.info { "---Step 2-#{App.name_upcase}:SEARCH_index_HINT: #{@search_index}" }
 
       # Step 3: Persist chosen index safely
       update_attribute(:search_index, @search_index)
@@ -1028,32 +1097,32 @@ class SearchQuery
                             # .max_time_ms(Rails.application.config.max_search_time)
                             # .limit(FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
 
-      Rails.logger.debug { "---Raw records fetched:\n#{records.ai(index: true, plain: true)}\n" }
+      Rails.logger.info { "---Step 4-Mongo::Collection::View (query statement) fetched:\n#{records.ai(index: true, plain: true)}\n" }
 
       # Step 5: Persist results
       persist_results(records)
-      Rails.logger.info { "---Persisted #{records.count} records." }
+      Rails.logger.info { "---Step 5-Persisted results: #{records.count.to_s} records." }
       
       # Step 6: Add secondary results (FreeREG only)
       if App.name == 'FreeREG' && result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS
         persist_additional_results(secondary_date_results)
-        Rails.logger.info { "---Persisted additional secondary date results." }
-        Rails.logger.info { "---Persisted additional secondary date results #{records.count} records." }
+        Rails.logger.info { "---Step 6-Persisted additional secondary date: results #{records.count} records." }
       end
 
       # Step 7: UCF search if allowed (ie enable in mongo_config.yml, county and place selected)
       if can_query_ucf? && result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS
         records = search_ucf
-        Rails.logger.info { "---UCF records fetched:\n#{records.ai(index: true, plain: true)}\n" }
+        Rails.logger.info { "---Step 7-UCF records fetched:#{records.ai(index: true, plain: true)}\n" }
       end
 
       # Step 8: Return final records
-      Rails.logger.info { "---Search completed with #{records.count} records." }
+      Rails.logger.info { "---Step 8-Search completed with #{records.count.to_s} records." }
+
       records
 
     rescue => e
       # Safety: catch unexpected errors
-      Rails.logger.error { "---Error in SearchQuery#search: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
+      Rails.logger.error { "---Step x-Error in SearchQuery#search: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
       []
     end
   end
