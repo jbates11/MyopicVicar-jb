@@ -450,11 +450,11 @@ class SearchRecord
     # end
 
     def index_hint(search_params)
-      Rails.logger.info { "\n---🔍 [SearchResult] Starting index_hint for #{App.name_downcase}" }
-      Rails.logger.info { "---Search parameters:\n#{search_params.ai(sort_keys: true, plain: true)}" }
+      Rails.logger.info { "\n---🔍 [index_hint] Starting index_hint for #{App.name_downcase}" }
+      Rails.logger.info { "---[index_hint] Search parameters:\n#{search_params.ai(sort_keys: true, plain: true)}" }
 
       search_fields = fields_from_params(search_params)
-      Rails.logger.info { "---Flattened search fields:\n#{search_fields.ai(plain: true)}" }
+      Rails.logger.info { "---[index_hint] Flattened search fields:\n#{search_fields.ai(plain: true)}" }
 
       candidates = []
       index_component = {}
@@ -492,20 +492,20 @@ class SearchRecord
         if search_fields.include?('place_id')
           candidates = REG_PLACE_INDEXES.keys
           index_component = REG_PLACE_INDEXES
-          Rails.logger.info { "---Using REG_PLACE_INDEXES (FreeREG + place_id)" }
+          Rails.logger.info { "---[index_hint] Using REG_PLACE_INDEXES (FreeREG + place_id)" }
 
         elsif search_fields.include?('chapman_code')
           candidates = REG_CHAPMAN_INDEXES.keys
           index_component = REG_CHAPMAN_INDEXES
-          Rails.logger.info { "---Using REG_CHAPMAN_INDEXES (FreeREG + chapman_code)" }
+          Rails.logger.info { "---[index_hint] Using REG_CHAPMAN_INDEXES (FreeREG + chapman_code)" }
 
         else
           candidates = REG_BASIC_INDEXES.keys
           index_component = REG_BASIC_INDEXES
-          Rails.logger.info { "---Using REG_BASIC_INDEXES (FreeREG fallback)" }
+          Rails.logger.info { "---[index_hint] Using REG_BASIC_INDEXES (FreeREG fallback)" }
         end
       else
-        Rails.logger.error { "---Unknown App.name_downcase: #{App.name_downcase}" }
+        Rails.logger.error { "---[index_hint] Unknown App.name_downcase: #{App.name_downcase}" }
         return nil
       end
 
@@ -513,21 +513,21 @@ class SearchRecord
       candidates.each do |name|
         score = index_score(name, search_fields, index_component)
         scores[name] = score
-        Rails.logger.debug { "---Index '#{name}' scored #{score}" }
+        Rails.logger.debug { "---[index_hint] Index '#{name}' scored #{score}" }
       end
 
       best = scores.max_by { |_k, v| v }
       chosen_index = best&.first
 
       if chosen_index
-        Rails.logger.info { "---✅ Best index selected: #{chosen_index} (score: #{best.last})\n" }
+        Rails.logger.info { "---[index_hint] ✅ Best index selected: #{chosen_index} (score: #{best.last})\n" }
       else
-        Rails.logger.warn { "---⚠️ No suitable index found.\n" }
+        Rails.logger.warn { "---[index_hint] ⚠️ No suitable index found.\n" }
       end
 
       chosen_index
     rescue => e
-      Rails.logger.error { "---Error in index_hint: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
+      Rails.logger.error { "---[index_hint] Error in index_hint: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
       nil
     end    
 

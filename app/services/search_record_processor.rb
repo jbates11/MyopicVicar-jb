@@ -104,7 +104,7 @@ class SearchRecordProcessor
   # Logging -----------------------------------------------------------------
 
   def log_start
-    log("[SearchRecordProcessor] Start processing SearchRecord #{record_id.inspect}")
+    log("\n[SearchRecordProcessor] Start processing SearchRecord #{record_id.inspect}")
   end
 
   def log_finish
@@ -112,7 +112,8 @@ class SearchRecordProcessor
   end
 
   def log(message)
-    @logger.info("[#{@trace_id}] #{message}")
+    @logger.info("#{message}")
+    # @logger.info("[#{@trace_id}] #{message}")
   end
 
   # Result builders ---------------------------------------------------------

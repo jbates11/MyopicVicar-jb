@@ -88,7 +88,7 @@ module UcfTransformer
   def self.contains_wildcard_ucf?(name_part)
     # Early return if blank
     if name_part.blank?
-      Rails.logger.info "[UCF Check] Received blank input. Exit udf detection routine."
+      Rails.logger.info "[self_contains_wildcard_ucf?] Received blank input. Exit udf detection routine."
       return false
     end
 
@@ -104,10 +104,10 @@ module UcfTransformer
     flagged = name_part.match?(regex)
 
     # Debugging output
-    Rails.logger.info "\n[UCF Check] Scanning string: #{name_part.inspect}"
-    Rails.logger.info "[UCF Check] Wildcard characters: #{wildcard_chars.join(' ')}"
-    Rails.logger.info "[UCF Check] Regex built: #{regex.inspect}"
-    Rails.logger.info "[UCF Check] Flagged? #{flagged}\n"
+    Rails.logger.info "\n[self_contains_wildcard_ucf] Scanning string: #{name_part.inspect}"
+    Rails.logger.info "[self_contains_wildcard_ucf] Wildcard characters: #{wildcard_chars.join(' ')}"
+    Rails.logger.info "[self_contains_wildcard_ucf] Regex built: #{regex.inspect}"
+    Rails.logger.info "[self_contains_wildcard_ucf] Flagged? #{flagged}\n"
 
     flagged
   end

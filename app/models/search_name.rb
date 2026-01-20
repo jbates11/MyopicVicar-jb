@@ -15,7 +15,7 @@ class SearchName
   # end
 
   def contains_wildcard_ucf?
-    Rails.logger.info "\n\n[SearchName] Checking SearchName #{id} for wildcard UCFs..."
+    Rails.logger.info "[contains_wildcard_ucf?] Checking SearchName #{id} for wildcard UCFs..."
 
     # Collect flags for both names
     flags = {
@@ -25,17 +25,17 @@ class SearchName
 
     # Log results for each name
     flags.each do |field, flagged|
-      Rails.logger.info "[SearchName] Log results for each name #{field.to_s.humanize} '#{send(field)}' flagged? #{flagged}"
+      Rails.logger.info "[contains_wildcard_ucf?] Log results for each name #{field.to_s.humanize} '#{send(field)}' flagged? #{flagged}"
     end
 
     # Determine overall result
     result = flags.values.any?
 
     if result
-      Rails.logger.info "*** [SearchName] Wildcard UCF detected in SearchName _id: #{id}"
-      Rails.logger.info "[SearchName] SearchName details:\n#{self.ai}\n"
+      Rails.logger.info "\n***--- [contains_wildcard_ucf?] Wildcard UCF detected in SearchName _id: #{id}"
+      Rails.logger.info "[contains_wildcard_ucf?] SearchName details:\n#{self.ai}\n"
     else
-      Rails.logger.info "--- [SearchName] No wildcard UCF detected in SearchName _id: #{id}\n"
+      Rails.logger.info "\n--- [contains_wildcard_ucf?] No wildcard UCF detected in SearchName _id: #{id}\n"
     end
 
     result

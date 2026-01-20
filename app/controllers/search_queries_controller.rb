@@ -264,23 +264,26 @@ class SearchQueriesController < ApplicationController
     else
       response, @search_results, @ucf_results, @result_count = @search_query.get_and_sort_results_for_display
 
-      logger.warn("\n#{App.name_upcase}:SEARCH Record RESULTS START:")
+      logger.warn("\n#{App.name_upcase}:[Show] SEARCH Record RESULTS START:")
 
-      Rails.logger.info "Search Record Results (@search_results) count:\n#{@search_results.count.ai}\n"
-      Rails.logger.info "Search Record Results (@search_results):\n#{@search_results.ai}\n"
+      Rails.logger.info "[Show] Search Record Results (@search_results) count: #{@search_results.count.ai}\n"
+      # Rails.logger.info "[Show] Search Record Results (@search_results):\n#{@search_results.ai}\n"
 
       # logger.info ap @search_results
-      Rails.logger.debug "This is a debug message"
-      Rails.logger.info "This is an info message"
-      Rails.logger.warn "This is a warning message"
-      Rails.logger.error "This is an error message"
-      Rails.logger.fatal "This is a fatal message"
       logger.warn("#{App.name_upcase}:SEARCH Record_RESULTS END:\n")
 
-      logger.warn("\n#{App.name_upcase}:UCF search record RESULTS_START:")
-      Rails.logger.info "UCF Results:\n#{@ucf_results.ai}\n"
+      Rails.logger.debug "[search_queries_controller#show] This is a debug message"
+      Rails.logger.info "[search_queries_controller#show] This is an info message"
+      Rails.logger.warn "[search_queries_controller#show] This is a warning message"
+      Rails.logger.error "[search_queries_controller#show] This is an error message"
+      Rails.logger.fatal "[search_queries_controller#show] This is a fatal message"
+      
+      logger.warn("\n#{App.name_upcase}:[Show] UCF search record RESULTS_START:")
+      Rails.logger.info "[Show] Search Record Results (@search_results) count: #{@ucf_results.count.ai}\n"
+      # Rails.logger.info "[Show] UCF Results (@ucf_results):\n#{@ucf_results.ai}\n"
+
       # logger.info ap @ucf_results
-      logger.warn("#{App.name_upcase}:UCF search record RESULTS__END:\n")
+      logger.warn("#{App.name_upcase}:[Show] UCF search record RESULTS__END:\n")
 
       if !response || @search_results.nil? || @search_query.result_count.nil?
         logger.warn("#{appname_upcase}:SEARCH_ERROR:search results no longer present for #{@search_query.id}")

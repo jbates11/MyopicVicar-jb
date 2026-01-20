@@ -612,22 +612,96 @@ class Freereg1CsvEntry
     [[hexdigest].pack("H*")].pack("m").strip
   end
 
-  def location_from_entry
-    file = freereg1_csv_file_id
-    return [false] unless Freereg1CsvFile.freereg1_csv_file_valid?(file)
+  # def location_from_entry
+  #   file = freereg1_csv_file_id
+  #   return [false] unless Freereg1CsvFile.freereg1_csv_file_valid?(file)
 
-    my_file = Freereg1CsvFile.find_by(_id: file)
-    my_register = my_file.register
-    return [false] unless Register.register_valid?(my_register)
+  #   my_file = Freereg1CsvFile.find_by(_id: file)
+    
+  #   my_register = my_file.register
+  #   return [false] unless Register.register_valid?(my_register)
 
-    my_church = my_register.church
-    return [false] unless Church.church_valid?(my_church)
+  #   my_church = my_register.church
+  #   return [false] unless Church.church_valid?(my_church)
 
-    my_place = my_church.place
-    return [false] unless Place.place_valid?(my_place)
+  #   my_place = my_church.place
+  #   return [false] unless Place.place_valid?(my_place)
 
-    [true, my_place, my_church, my_register]
+  #   [true, my_place, my_church, my_register]
+  # end
+
+def location_from_entry
+    context = {
+    caller: caller(1..1).first,
+    file: __FILE__,
+    line: __LINE__
+  }
+  Rails.logger.info "\ncontext=#{context.inspect}"
+  Rails.logger.info "location_from_entry: starting lookup for freereg1_csv_entry #{id}"
+  # p "location_from_entry: starting lookup for entry #{id}"
+
+  # ------------------------------------------------------------
+  # Step 1: Load the file via Mongoid relation
+  # ------------------------------------------------------------
+  file = freereg1_csv_file
+  Rails.logger.info "location_from_entry: freereg1_csv_file= #{file&.id}"
+  # p freereg1_csv_file: file
+
+  unless file.present?
+    Rails.logger.warn "location_from_entry: NO related Freereg1CsvFile found for entry #{id}"
+    # p "NO related Freereg1CsvFile"
+    return [false]
   end
+
+  # ------------------------------------------------------------
+  # Step 2: Load register via relation
+  # ------------------------------------------------------------
+  register = file.register
+  Rails.logger.info "location_from_entry: register= #{register&.id}"
+  # p register: register
+
+  unless register.present?
+    Rails.logger.warn "location_from_entry: NO register found for file #{file.id}"
+    # p "NO register"
+    return [false]
+  end
+
+  # ------------------------------------------------------------
+  # Step 3: Load church via relation
+  # ------------------------------------------------------------
+  church = register.church
+  Rails.logger.info "location_from_entry: church= #{church&.id}"
+  # p church: church
+
+  unless church.present?
+    Rails.logger.warn "location_from_entry: NO church found for register #{register.id}"
+    # p "NO church"
+    return [false]
+  end
+
+  # ------------------------------------------------------------
+  # Step 4: Load place via relation
+  # ------------------------------------------------------------
+  place = church.place
+  Rails.logger.info "location_from_entry: place= #{place&.id}"
+  # p place: place
+
+  unless place.present?
+    Rails.logger.warn "location_from_entry: NO place found for church #{church.id}"
+    # p "NO place"
+    return [false]
+  end
+
+  # ------------------------------------------------------------
+  # Step 5: Success
+  # ------------------------------------------------------------
+  Rails.logger.info "location_from_entry: SUCCESS for freereg1_csv_entry #{id}"
+  # p success: true, place: place, church: church, register: register
+
+  [true, place, church, register]
+end
+
+
 
   def multiple_witness_names?
     present = false
