@@ -457,7 +457,8 @@ class SearchQuery
   # end
 
   def filter_ucf_records(records)
-  Rails.logger.info "\n[filter_ucf_records] starting with #{records.size} raw records\n"
+  Rails.logger.info "\n[filter_ucf_records] starting with #{records.size} raw records"
+  Rails.logger.info "[filter_ucf_records] Start loop of search records\n"
   # ap(records: records)
 
   filtered_records = []
@@ -466,7 +467,7 @@ class SearchQuery
     Rails.logger.info "[filter_ucf_records] Processing raw search record: #{raw_record.inspect}"
 
     record = SearchRecord.record_id(raw_record.to_s).first
-    Rails.logger.info "[filter_ucf_records] Search Record load:\n#{record.inspect}"
+    Rails.logger.info "[filter_ucf_records] Search Record:\n#{record.inspect}"
     # Rails.logger.info "[filter_ucf_records] Search Record load:\n#{record.ai}"
     # ap(record_loaded: record)
 
@@ -477,10 +478,10 @@ class SearchQuery
       next
     end
 
-    # if record.search_date.match(UCF)
-    #   Rails.logger.info "[filter_ucf_records] Skipping search record: search_date matches UCF"
-    #   next
-    # end
+    if record.search_date.match(UCF)
+      Rails.logger.info "[filter_ucf_records] Skipping search record: search_date matches UCF"
+      next
+    end
 
     if record_type.present? && record.record_type != record_type
       Rails.logger.info "[filter_ucf_records] Skipping search record: record_type mismatch"
@@ -495,9 +496,9 @@ class SearchQuery
       end
     end
 
-    Rails.logger.info "\n[filter_ucf_records] Start loop"
+    Rails.logger.info "\n[filter_ucf_records] Start loop of search name(s)"
     record.search_names.each do |name|
-      Rails.logger.info "\n[filter_ucf_records] Evaluating search name: #{name.attributes}"
+      Rails.logger.info "\n+++ [filter_ucf_records] Evaluating search name: #{name.attributes}"
       # ap(name: name)
 
       unless name.type == SearchRecord::PersonType::PRIMARY || inclusive || witness
@@ -554,8 +555,9 @@ class SearchQuery
         Rails.logger.error "[filter_ucf_records] RegexpError for name #{name.inspect}: #{e.message}"
       end
     end
-    Rails.logger.info "[filter_ucf_records] End of loop\n"
+    Rails.logger.info "[filter_ucf_records] End loop of search names\n"
   end
+  Rails.logger.info "[filter_ucf_records] End loop of search records\n"
 
   Rails.logger.info "[filter_ucf_records] filter_ucf_records: returning #{filtered_records.size} filtered records\n"
   # Rails.logger.info "\n[filter_ucf_records] filtered records:\n#{filtered_records.ai}\n"
@@ -1338,24 +1340,24 @@ end
     # ap ucf_records, indent: -2
 
     # Step 2: Filter UCF records
-    Rails.logger.warn("[SEARCH_UCF] --- Step 2 Start filtering UCF records (Search Record ID):\n#{ucf_records.ai}")
+    Rails.logger.warn("[SEARCH_UCF] --- Step 2 Start filtering UCF records")
 
-    ucf_records = filter_ucf_records(ucf_records)
+    filtered_ucf_records = filter_ucf_records(ucf_records)
 
-    Rails.logger.warn("[SEARCH_UCF] --- Step 2a Filtered UCF records (Search Record ID):\n#{ucf_records.inspect}")
-    # Rails.logger.warn("[SEARCH_UCF] --- Step 2a Filtered UCF records (Search Record ID):\n#{ucf_records.ai}")
+    Rails.logger.warn("[SEARCH_UCF] --- Step 2a Filtered UCF records (Search Record ID):\n#{filtered_ucf_records.inspect}")
+    # Rails.logger.warn("[SEARCH_UCF] --- Step 2a Filtered UCF records (Search Record ID):\n#{filtered_ucf_records.ai}")
     # ap ucf_records, indent: -2
 
-    # Step 3: Count + assign to search_result
-    if ucf_records.present?
-      ucf_filtered_count = ucf_records.length
+    # Step 3: Count + assign to search_result model (not a db), ucf_records field
+    if filtered_ucf_records.present?
+      ucf_filtered_count = filtered_ucf_records.length
 
       Rails.logger.warn("[SEARCH_UCF] --- Step 3 UCF filtered count: #{ucf_filtered_count}")
 
-      # Store only IDs
-      search_result.ucf_records = ucf_records.map { |sr| sr.id }
+      # Store only IDs into search_result model, ucf_records field
+      search_result.ucf_records = filtered_ucf_records.map { |sr| sr.id }
 
-      Rails.logger.warn("[SEARCH_UCF] --- Step 3a Stored UCF record IDs (Search Record ID):\n#{search_result.ucf_records.ai}")
+      Rails.logger.warn("[SEARCH_UCF] --- Step 3a Stored filtered UCF record IDs (Search Record ID) to search_result model, ucf_records field:\n#{search_result.ucf_records.ai}")
       # ap search_result.ucf_records, indent: -2
     else
       ucf_filtered_count = 0

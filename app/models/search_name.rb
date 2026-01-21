@@ -14,8 +14,9 @@ class SearchName
   #   result
   # end
 
+  # Does search name contain any wildcard UCF characters in either the first name or the last name?
   def contains_wildcard_ucf?
-    Rails.logger.info "[contains_wildcard_ucf?] Checking SearchName #{id} for wildcard UCFs..."
+    Rails.logger.info "\n+++ [contains_wildcard_ucf?] Checking SearchName #{id} for wildcard UCFs..."
 
     # Collect flags for both names
     flags = {
