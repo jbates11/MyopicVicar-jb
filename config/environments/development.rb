@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+# JC custom rotate the default Rails log file  
+require Rails.root.join("lib", "iso8601_daily_logger")
+
 MyopicVicar::Application.configure do
   # Settings specified here will take precedence over those in config/application.rb
 
@@ -22,6 +26,16 @@ MyopicVicar::Application.configure do
 
   # config.log_level = :debug
   config.log_level = :info
+
+  # JC custom rotate the default Rails log file  
+  config.logger = Iso8601DailyLogger.new(
+    Rails.root.join("log", "development.log").to_s
+  )
+
+  config.logger.formatter = proc do |severity, timestamp, progname, msg|
+    "#{msg}\n"
+  end
+
   # Log error messages when you accidentally call methods on nil.
   config.whiny_nils = true
 
