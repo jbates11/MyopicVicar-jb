@@ -83,8 +83,10 @@ class SearchQuery
     }
   end
 
-  WILDCARD = /[?*]/
-  UCF = /[\[\{}_\*\?]/
+  WILDCARD   = /[?*]/.freeze
+  UCF        = /[\[\{}_\*\?]/.freeze
+  # UCF        = /[\[\{}_\*]/.freeze
+  VALID_YEAR = /\b\d{4}\b/.freeze
 
   field :first_name, type: String # , :required => false
   field :last_name, type: String # , :required => false
@@ -478,7 +480,7 @@ class SearchQuery
       next
     end
 
-    if record.search_date.match(UCF)
+    if record.search_date.match(UCF) && !record.search_date.match(VALID_YEAR)
       Rails.logger.info "[filter_ucf_records] Skipping search record: search_date matches UCF"
       next
     end
