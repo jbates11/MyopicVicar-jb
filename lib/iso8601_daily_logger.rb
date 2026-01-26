@@ -3,9 +3,12 @@ class Iso8601DailyLogger < Logger
     super(log_path)
     @log_path = log_path
     @date = current_date
+    puts "Iso8601DailyLogger initialized"
   end
 
+
   def add(severity, message = nil, progname = nil, &block)
+    puts "Iso8601DailyLogger#add called"
     rotate_if_needed
     super
   end
@@ -33,7 +36,8 @@ class Iso8601DailyLogger < Logger
   end
 
   def current_date
-    Time.now.utc.strftime("%Y-%m-%d")
+    Time.now.strftime("%Y-%m-%d")
+    # Time.now.utc.strftime("%Y-%m-%d")
   end
 
   def prune_old_logs(days_to_keep)
