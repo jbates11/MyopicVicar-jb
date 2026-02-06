@@ -55,6 +55,9 @@ class Place
   field :open_record_count, type: Integer, default: 0
   field :unique_surnames, type: Array
   field :unique_forenames, type: Array
+  field :ucf_list_updated_at, type: DateTime
+  field :ucf_list_record_count, type: Integer, default: 0
+  field :ucf_list_file_count, type: Integer, default: 0
 
   embeds_many :alternateplacenames
 
