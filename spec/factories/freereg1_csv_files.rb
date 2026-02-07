@@ -13,6 +13,7 @@ FactoryBot.define do
     country { 'England' }
     processed { true }
     error { 0 }
+    ucf_list { [] }
 
     association :register, factory: :register
 

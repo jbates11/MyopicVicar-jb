@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :search_record do
+    sequence(:id) { |n| "SR#{n}" }
     record_type { RecordType::BAPTISM }
     search_record_version { '1' }
     chapman_code { 'SUR' }
