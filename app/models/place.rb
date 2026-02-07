@@ -674,6 +674,14 @@ class Place
   # end
 
   def update_ucf_list(file)
+    Rails.logger.info(
+      "UCF: Operation",
+      action: "add_record",
+      place_id: place.id,
+      file_id: file.id,
+      record_id: search_record.id
+    ) 
+
     Rails.logger.info "Updating UCF list for Place #{id} with File #{file.id}..."
 
     ids = file.search_record_ids_with_wildcard_ucf
