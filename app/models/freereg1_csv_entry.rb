@@ -981,14 +981,16 @@ end
     # Case 0: No change
     return unless file_in_ucf_list || search_record_has_ucf
 
-    if file_in_ucf_list && search_record_has_ucf
-      handle_add_ucf(place, file, file_key, old_search_record)
+    safe_update_ucf!(place, file) do
+      if file_in_ucf_list && search_record_has_ucf
+        handle_add_ucf(place, file, file_key, old_search_record)
 
-    elsif file_in_ucf_list && !search_record_has_ucf
-      handle_remove_ucf(place, file, file_key, old_search_record)
+      elsif file_in_ucf_list && !search_record_has_ucf
+        handle_remove_ucf(place, file, file_key, old_search_record)
 
-    elsif !file_in_ucf_list && search_record_has_ucf
-      handle_new_ucf(place, file, file_key)
+      elsif !file_in_ucf_list && search_record_has_ucf
+        handle_new_ucf(place, file, file_key)
+      end
     end
   end
 
@@ -1574,6 +1576,32 @@ end
 
 
   private
+
+  def safe_update_ucf!(place, file)
+    # Save original state for rollback
+    original_place_list = place.ucf_list.deep_dup
+    original_file_list  = file.ucf_list&.dup || []
+
+    begin
+      yield  # perform the mutation block
+
+      file.ucf_updated = Date.today
+      file.save!
+      place.save!
+
+    rescue => e
+      # Rollback on failure
+      Rails.logger.error "safe_update_ucf! rollback triggered: #{e.class} - #{e.message}"
+      
+      place.ucf_list = original_place_list
+      file.ucf_list  = original_file_list
+
+      place.save
+      file.save
+
+      raise e
+    end
+  end
 
   def handle_add_ucf(place, file, file_key, old_search_record)
     return if place.ucf_list[file_key].include?(search_record.id.to_s)
