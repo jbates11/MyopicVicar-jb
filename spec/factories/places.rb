@@ -15,5 +15,23 @@ FactoryBot.define do
     #   end
     # end
     
+    trait :with_ucf_records do
+      transient do
+        record_groups_count { 1 }
+        records_per_group   { 2 }
+      end
+
+      after(:build) do |place, evaluator|
+        ucf_list = {}
+
+        evaluator.record_groups_count.times do
+          group_key = SecureRandom.hex(12)
+          ucf_list[group_key] = Array.new(evaluator.records_per_group) { BSON::ObjectId.new }
+        end
+
+        place.ucf_list = ucf_list
+      end
+    end
+
   end
 end
