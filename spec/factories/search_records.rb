@@ -15,6 +15,11 @@ FactoryBot.define do
 
     association :freereg1_csv_entry, factory: :freereg1_csv_entry
     association :place, factory: :place
+    
+    trait :with_entry do
+      freereg1_csv_entry  # Shortened syntax
+      # association :freereg1_csv_entry, factory: :freereg1_csv_entry
+    end
 
     trait :with_populated_search_names do
       after(:build) do |record|

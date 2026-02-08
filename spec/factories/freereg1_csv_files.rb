@@ -14,6 +14,7 @@ FactoryBot.define do
     processed { true }
     error { 0 }
     ucf_list { [] }
+    ucf_updated { nil }
 
     association :register, factory: :register
 

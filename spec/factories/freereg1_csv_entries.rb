@@ -10,6 +10,9 @@ FactoryBot.define do
     record_type { RecordType::BAPTISM }
 
     association :freereg1_csv_file, factory: :freereg1_csv_file
+    # association :search_record, factory: :search_record
+    # freereg1_csv_file # Shortened syntax
+    # search_record     # Shortened syntax
 
     # Baptism-specific traits
     trait :baptism do
