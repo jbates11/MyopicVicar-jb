@@ -635,14 +635,63 @@ class Freereg1CsvFile
     end
   end
 
+  # def clean_up_place_ucf_list
+  #   proceed, place, _church, _register = self.location_from_file
+  #   if proceed && place.present?
+  #     ucf_list = place.ucf_list
+  #     ucf_list = ucf_list.delete_if {|key, value| key.to_s == self.id.to_s}
+  #     place.update(ucf_list: ucf_list)
+  #   end
+  # end
+
   def clean_up_place_ucf_list
-    proceed, place, _church, _register = self.location_from_file
-    if proceed && place.present?
-      ucf_list = place.ucf_list
-      ucf_list = ucf_list.delete_if {|key, value| key.to_s == self.id.to_s}
-      place.update(ucf_list: ucf_list)
+    Rails.logger.info("[Freereg1CsvFile##{id}] Starting clean_up_place_ucf_list")
+
+    proceed, place, _church, _register = location_from_file
+
+    # --- Guard Clause 1: No place lookup ---
+    unless proceed
+      Rails.logger.warn("[Freereg1CsvFile##{id}] Aborting cleanup: location_from_file returned proceed=false")
+      return
     end
+
+    # --- Guard Clause 2: No place found ---
+    if place.blank?
+      Rails.logger.warn("[Freereg1CsvFile##{id}] Aborting cleanup: no associated Place found")
+      return
+    end
+
+    # --- Load the Place’s UCF list safely ---
+    place_list = place.ucf_list || {}
+    file_id    = id.to_s
+
+    # --- Idempotency Check: If the Place already does NOT reference this file ---
+    unless place_list.key?(file_id)
+      Rails.logger.info("[Freereg1CsvFile##{id}] Place already clean; no entry to remove")
+    else
+      # Remove only this file’s entry
+      cleaned_list = place_list.reject { |key, _value| key == file_id }
+
+      # Only write if something actually changed
+      if cleaned_list != place_list
+        Rails.logger.info("[Freereg1CsvFile##{id}] Removing entry from Place##{place.id} ucf_list")
+        place.update(ucf_list: cleaned_list)
+      else
+        Rails.logger.info("[Freereg1CsvFile##{id}] No changes needed for Place##{place.id}")
+      end
+    end
+
+    # --- Clean this file’s own list (idempotent) ---
+    if self.ucf_list.present?
+      Rails.logger.info("[Freereg1CsvFile##{id}] Clearing this file’s own ucf_list")
+      update(ucf_list: [])
+    else
+      Rails.logger.info("[Freereg1CsvFile##{id}] File ucf_list already empty")
+    end
+
+    Rails.logger.info("[Freereg1CsvFile##{id}] Finished clean_up_place_ucf_list")
   end
+
 
   def define_colour
     # need to consider storing the processed rather than a look up
@@ -870,13 +919,20 @@ class Freereg1CsvFile
     end
   end
 
+  # def remove_from_ucf_list
+  #   proceed, place, _church, _register = location_from_file
+  #   if proceed
+  #     place.ucf_list.delete_if { |key, value| key.to_s == id.to_s }
+  #     place.save
+  #   end
+  # end
+
   def remove_from_ucf_list
-    proceed, place, _church, _register = location_from_file
-    if proceed
-      place.ucf_list.delete_if { |key, value| key.to_s == id.to_s }
-      place.save
-    end
+    # duplicate method, redirect to:
+    clean_up_place_ucf_list
   end
+
+
 
   # def search_record_ids_with_wildcard_ucf
   #   ids = []
