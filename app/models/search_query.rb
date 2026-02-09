@@ -1325,64 +1325,45 @@ end
   # end
 
   def search_ucf
-    # Track runtime
-    start_ucf_time = Time.now.utc
+    started_at = Time.now.utc
+    log_ucf(:info, "Starting UCF search", started_at: started_at)
 
-    # Debug: starting UCF search
-    Rails.logger.warn("\n\n[SEARCH_UCF] Starting UCF search at #{start_ucf_time}")
+    # Guard Clauses — fail fast, predictable behavior
+    return fail_ucf!("Missing place_ids") if place_ids.blank?
+    return fail_ucf!("Missing search_result") if search_result.nil?
 
-    Rails.logger.info(
-      "UCF: Operation | action: search_ucf | place_id: #{place.id} | file_id: #{file.id} | record_id: #{search_record.id}"
+    # Step 1: Extract UCF records (safe wrapper)
+    ucf_records = safe_extract_ucf_records(place_ids)
+    log_ucf(:info, "UCF records extracted", count: ucf_records.size)
+
+    # Step 2: Filter UCF records (safe wrapper)
+    filtered = safe_filter_ucf_records(ucf_records)
+    log_ucf(:info, "UCF records filtered", filtered_count: filtered.size)
+
+    # Step 3: Assign filtered IDs to search_result
+    search_result.ucf_records = filtered.map(&:id)
+    log_ucf(:info, "Assigned filtered UCF record IDs")
+
+    # Step 4: Persist metrics on SearchQuery
+    self.ucf_filtered_count = filtered.size
+    self.runtime_ucf        = elapsed_ms(started_at)
+
+    log_ucf(
+      :info,
+      "UCF metrics updated",
+      runtime_ms: runtime_ucf,
+      place_count: safe_count(places),
+      result_count: safe_count(search_result.ucf_records)
     )
 
-    # Debug: place_ids
-    Rails.logger.warn("[SEARCH_UCF] place_ids:\n#{place_ids.ai}")
-    # ap place_ids, indent: -2
-
-    # Step 1: Extract UCF records
-    ucf_records = Place.extract_ucf_records(place_ids)
-
-    Rails.logger.warn("[SEARCH_UCF] --- Step 1 Raw UCF records extracted from Place (Search Record ID):\n#{ucf_records.ai}")
-    # ap ucf_records, indent: -2
-
-    # Step 2: Filter UCF records
-    Rails.logger.warn("[SEARCH_UCF] --- Step 2 Start filtering UCF records")
-
-    filtered_ucf_records = filter_ucf_records(ucf_records)
-
-    Rails.logger.warn("[SEARCH_UCF] --- Step 2a Filtered UCF records (Search Record ID):\n#{filtered_ucf_records.inspect}")
-    # Rails.logger.warn("[SEARCH_UCF] --- Step 2a Filtered UCF records (Search Record ID):\n#{filtered_ucf_records.ai}")
-    # ap ucf_records, indent: -2
-
-    # Step 3: Count + assign to search_result model (not a db), ucf_records field
-    if filtered_ucf_records.present?
-      ucf_filtered_count = filtered_ucf_records.length
-
-      Rails.logger.warn("[SEARCH_UCF] --- Step 3 UCF filtered count: #{ucf_filtered_count}")
-
-      # Store only IDs into search_result model, ucf_records field
-      search_result.ucf_records = filtered_ucf_records.map { |sr| sr.id }
-
-      Rails.logger.warn("[SEARCH_UCF] --- Step 3a Stored filtered UCF record IDs (Search Record ID) to search_result model, ucf_records field:\n#{search_result.ucf_records.ai}")
-      # ap search_result.ucf_records, indent: -2
-    else
-      ucf_filtered_count = 0
-      Rails.logger.warn("[SEARCH_UCF] --- Step 3b No UCF records found")
+    # Step 5: Save safely
+    unless save
+      log_ucf(:error, "SearchQuery save failed", errors: errors.full_messages)
+      return false
     end
 
-    # Step 4: Persist counts + runtime
-    self.ucf_filtered_count = ucf_filtered_count
-
-    runtime_ucf = (Time.now.utc - start_ucf_time) * 1000.0
-    self.runtime_ucf = runtime_ucf
-
-    Rails.logger.warn("[SEARCH_UCF] --- Step 4 Runtime (ms): #{runtime_ucf}")
-
-    # Debug: final object state before save
-    Rails.logger.warn("[SEARCH_UCF] --- Step 4a Final SearchQuery state before save:\n#{self.attributes.ai}")
-    # ap self.attributes, indent: -2
-
-    save
+    log_ucf(:info, "UCF search complete")
+    true
   end  
 
   def sort_results(results)
@@ -1553,5 +1534,39 @@ end
 
   def selected_sort_fields
     [ SearchOrder::COUNTY, SearchOrder::BIRTH_COUNTY, SearchOrder::BIRTH_PLACE, SearchOrder::TYPE ]
+  end
+
+  def safe_extract_ucf_records(ids)
+    Place.extract_ucf_records(ids)
+  rescue => e
+    log_ucf(:error, "extract_ucf_records failed", error: e.message)
+    []
+  end
+
+  def safe_filter_ucf_records(records)
+    filter_ucf_records(records)
+  rescue => e
+    log_ucf(:error, "filter_ucf_records failed", error: e.message)
+    []
+  end
+
+  def elapsed_ms(start_time)
+    ((Time.now.utc - start_time) * 1000.0).round(2)
+  end
+
+  def safe_count(collection)
+    collection.respond_to?(:count) ? collection.count : 0
+  end
+
+  def fail_ucf!(message)
+    log_ucf(:warn, "UCF aborted: #{message}")
+    false
+  end
+
+  def log_ucf(level, message, payload = {})
+    Rails.logger.public_send(
+      level,
+      "[SEARCH_UCF] #{message} | #{payload.to_json}"
+    )
   end
 end
