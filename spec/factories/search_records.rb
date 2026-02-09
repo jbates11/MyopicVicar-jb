@@ -1,10 +1,10 @@
 FactoryBot.define do
   factory :search_record do
     sequence(:id) { |n| "SR#{n}" }
-    record_type { RecordType::BAPTISM }
-    search_record_version { '1' }
     chapman_code { 'SUR' }
+    record_type { RecordType::BAPTISM }
     search_date { '1850' }
+    search_record_version { '1' }
     secondary_search_date { nil }
     transcript_dates { ['01 JAN 1850'] }
     transcript_names do

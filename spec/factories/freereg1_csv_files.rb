@@ -1,20 +1,20 @@
 FactoryBot.define do
   factory :freereg1_csv_file do
-    sequence(:file_name) { |n| "freereg_baptisms_#{n}.csv" }
-    record_type { RecordType::BAPTISM }
     chapman_code { 'SUR' }
-    county { 'SUR' }
-    place { 'Guildford' }
     church_name { 'St. Mary' }
-    register_type { 'Baptism' }
-    sequence(:userid) { |n| "volunteer_#{n}" }
-    userid_lower_case { userid.downcase }
-    search_record_version { '1' }
     country { 'England' }
-    processed { true }
+    county { 'SUR' }
     error { 0 }
+    sequence(:file_name) { |n| "freereg_baptisms_#{n}.csv" }
+    place { 'Guildford' }
+    processed { true }
+    record_type { RecordType::BAPTISM }
+    register_type { 'Baptism' }
+    search_record_version { '1' }
     ucf_list { [] }
     ucf_updated { nil }
+    userid_lower_case { userid.downcase }
+    sequence(:userid) { |n| "volunteer_#{n}" }
 
     association :register, factory: :register
 

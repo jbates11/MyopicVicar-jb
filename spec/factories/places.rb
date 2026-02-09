@@ -5,6 +5,7 @@ FactoryBot.define do
     chapman_code { "NFK" }
     country      { "England" }
     county       { "Norfolk" }
+    data_present { true }
     latitude     { "52.6309" }
     longitude    { "1.2974" }
     ucf_list     { {} }
