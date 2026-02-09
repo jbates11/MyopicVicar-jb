@@ -699,7 +699,7 @@ namespace :foo do
 
       #  Iterate through all Freereg1CsvFile files belonging to this place
       Freereg1CsvFile.where(place_name: place.place_name).order(file_name: :asc).no_timeout.each do |file|
-        # Special case: skip known heavy file
+        # Special case: skip known heavy file - place.ucf_list set to empty
         if file.file_name == "SOMFSJBA.csv" && file.userid == "YvonneScrivener"  # This file has 48,000 entries
           Rails.logger.warn "Skipping heavy file #{file.file_name} for user #{file.userid}"
           next
