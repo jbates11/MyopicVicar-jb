@@ -1,7 +1,7 @@
 require 'rails_helper'
 require Rails.root.join('lib/freereg1_translator')
 
-describe 'SearchName population from Freereg1CsvFile' do
+RSpec.describe 'SearchName population from Freereg1CsvFile' do
   let(:trace_id) { SecureRandom.uuid }
   let(:timestamp) { Time.now.utc.iso8601 }
 

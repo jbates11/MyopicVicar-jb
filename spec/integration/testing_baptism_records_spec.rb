@@ -1,7 +1,7 @@
 require 'rails_helper'
 require Rails.root.join('lib/freereg1_translator')
 
-describe 'Baptism SearchName population' do
+RSpec.describe 'Baptism SearchName population' do
   let(:place) { create(:place, place_name: 'Guildford', chapman_code: 'ESS') }
   let(:church) { create(:church, place: place) }
   let(:register) { create(:register, church: church, register_type: 'Baptism') }
