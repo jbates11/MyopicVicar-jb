@@ -699,35 +699,66 @@ class Place
   # end
 
   def update_ucf_list(file)
-    Rails.logger.info(
-      "UCF: Operation | action: update_ucf_list | place_id: #{id} | file_id: #{file.id} | record_id: {search_record.id}"
-    )
+    # --- Guard Clauses -------------------------------------------------------
 
-    Rails.logger.info "Updating UCF list for Place #{id} with File #{file.id}..."
+    return unless file.present?
 
-    ids = file.search_record_ids_with_wildcard_ucf
-    Rails.logger.debug "Flagged SearchRecord IDs from File #{file.id}:\n#{ids.ai}"
-
-    if ids.present?
-      # Update place-level UCF list
-      self.ucf_list[file.id.to_s] = ids
-      Rails.logger.info "Place #{id} UCF list updated with File #{file.id}"
-      Rails.logger.info "Place UCF list details:\n#{self.ucf_list.ai}"
-
-      # Update file-level UCF list
-      file.ucf_list = ids
-      Rails.logger.info "File #{file.id} UCF list updated"
-      Rails.logger.info "File UCF list details:\n#{file.ucf_list.ai}"
-    else
-      # Explicitly set empty hash and array
-      self.ucf_list[file.id.to_s] = {}
-      file.ucf_list = []
-      Rails.logger.info "No wildcard UCFs found for File #{file.id}"
+    unless file.respond_to?(:search_record_ids_with_wildcard_ucf)
+      Rails.logger.error(
+        "UCF: Operation aborted | reason: missing method | " \
+        "place_id: #{id} | file_id: #{file.try(:id)}"
+      )
+      return
     end
 
-    # Always stamp update date
-    file.ucf_updated = DateTime.now.to_date
-    Rails.logger.info "File #{file.id} UCF updated date set to #{file.ucf_updated}"
+    # --- Logging --------------------------------------------------------------
+
+    Rails.logger.info(
+      "UCF: Operation | action: update_ucf_list | place_id: #{id} | file_id: #{file.id}"
+    )
+    Rails.logger.info "Updating UCF list for Place #{id} with File #{file.id}..."
+
+    # --- Fetch IDs ------------------------------------------------------------
+
+    ids = file.search_record_ids_with_wildcard_ucf
+    Rails.logger.debug "Flagged SearchRecord IDs from File #{file.id}: #{ids.inspect}"
+
+    # --- Update Place + File --------------------------------------------------
+
+    if ids.present?
+      # Place-level UCF list
+      self.ucf_list[file.id.to_s] = ids
+
+      # File-level UCF list
+      file.ucf_list = ids
+
+      Rails.logger.info(
+        "UCF: wildcard records found | place_id: #{id} | file_id: #{file.id} | count: #{ids.size}"
+      )
+    else
+      # Explicit empty states
+      self.ucf_list[file.id.to_s] = {}
+      file.ucf_list = []
+
+      Rails.logger.info(
+        "UCF: no wildcard records | place_id: #{id} | file_id: #{file.id}"
+      )
+    end
+
+    # --- Always update timestamps + counters ---------------------------------
+
+    today = DateTime.now.to_date
+    now   = DateTime.now
+
+    file.ucf_updated          = today
+    self.ucf_list_updated_at  = now
+    self.ucf_list_record_count = ucf_record_ids.size
+    self.ucf_list_file_count   = ucf_list.keys.size
+
+    Rails.logger.info(
+      "UCF: summary | place_id: #{id} | file_id: #{file.id} | " \
+      "record_count: #{ucf_list_record_count} | file_count: #{ucf_list_file_count}"
+    )
   end
 
   def clean_up_ucf_list
