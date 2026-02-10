@@ -985,6 +985,7 @@ end
   #   end
 
   #   if file_in_ucf_list && !search_record_has_ucf
+
   #     place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present?
   #     place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == search_record.id.to_s }
   #     file.ucf_list.delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present? && file.ucf_list.present?
@@ -1673,6 +1674,7 @@ end
   def handle_remove_ucf(place, file, file_key, old_search_record)
     cleanup_old_ids(place, file, file_key, old_search_record)
     place.ucf_list[file_key].delete(search_record.id.to_s)
+    file.ucf_list ||= []
     file.ucf_list&.delete(search_record.id.to_s)
 
     update_and_save(file, place, "Case B: Removed UCF record")
