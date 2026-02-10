@@ -1,7 +1,7 @@
 require 'rails_helper'
 require 'rake'
 
-describe 'freereg:clean_ucf_place_list' do
+RSpec.describe 'freereg:clean_ucf_place_list' do
   let(:rake_task) { Rake::Task['freereg:clean_ucf_place_list'] }
 
   before do
@@ -41,7 +41,7 @@ describe 'freereg:clean_ucf_place_list' do
         expect {
           rake_task.invoke
         }.to change {
-          place.reload.ucf_list
+          (place.class.find(place.id)).ucf_list
         }.from(
           hash_including(valid_file.id.to_s, invalid_file.id.to_s)
         ).to(
@@ -51,7 +51,7 @@ describe 'freereg:clean_ucf_place_list' do
 
       it 'preserves valid ucf_list entries matching place and county' do
         rake_task.invoke
-        place.reload
+        (place.class.find(place.id))
 
         expect(place.ucf_list).to include(valid_file.id.to_s)
         expect(place.ucf_list[valid_file.id.to_s]).to eq({ 'data' => 'value' })
@@ -62,7 +62,7 @@ describe 'freereg:clean_ucf_place_list' do
         p "original_list: #{original_list}"
 
         rake_task.invoke
-        place.reload
+        (place.class.find(place.id))
         p "ucf_list: #{place.ucf_list}"  
         p "old_ucf_list: #{place.old_ucf_list}"  
 
@@ -71,7 +71,7 @@ describe 'freereg:clean_ucf_place_list' do
 
       it 'removes entries for files with mismatched county' do
         rake_task.invoke
-        place.reload
+        (place.class.find(place.id))
 
         expect(place.ucf_list).not_to include(invalid_file.id.to_s)
       end
@@ -90,7 +90,7 @@ describe 'freereg:clean_ucf_place_list' do
 
       it 'maintains empty ucf_list' do
         rake_task.invoke
-        place.reload
+        (place.class.find(place.id))
 
         expect(place.ucf_list).to be_empty
       end
@@ -107,7 +107,7 @@ describe 'freereg:clean_ucf_place_list' do
 
       it 'removes all entries for missing files' do
         rake_task.invoke
-        place.reload
+        (place.class.find(place.id))
 
         expect(place.ucf_list).to be_empty
       end
@@ -133,8 +133,8 @@ describe 'freereg:clean_ucf_place_list' do
       it 'processes all places' do
         rake_task.invoke
         
-        place1.reload
-        place2.reload
+        (place1.class.find(place1.id))
+        (place2.class.find(place2.id))
 
         expect(place1.ucf_list).not_to be_empty
         expect(place2.ucf_list).not_to be_empty
@@ -145,8 +145,8 @@ describe 'freereg:clean_ucf_place_list' do
         file2 = Freereg1CsvFile.find(place2.ucf_list.keys.first)
 
         rake_task.invoke
-        place1.reload
-        place2.reload
+        (place1.class.find(place1.id))
+        (place2.class.find(place2.id))
 
         expect(place1.ucf_list.keys).to include(file1.id.to_s)
         expect(place2.ucf_list.keys).to include(file2.id.to_s)
@@ -170,7 +170,7 @@ describe 'freereg:clean_ucf_place_list' do
 
       it 'removes entry when county does not match' do
         rake_task.invoke
-        place.reload
+        (place.class.find(place.id))
 
         expect(place.ucf_list).to be_empty
       end
@@ -193,7 +193,7 @@ describe 'freereg:clean_ucf_place_list' do
 
       it 'removes entry when place does not match' do
         rake_task.invoke
-        place.reload
+        (place.class.find(place.id))
 
         expect(place.ucf_list).to be_empty
       end

@@ -97,7 +97,7 @@ RSpec.describe Freereg1CsvEntry, type: :model do
           # swallow error for test
         end
 
-        after_state = [place.reload.ucf_list, file.reload.ucf_list]
+        after_state = [(place.class.find(place.id)).ucf_list, (file.class.find(file.id)).ucf_list]
 
         expect(after_state).to eq(before_state)
       end
@@ -122,7 +122,7 @@ RSpec.describe Freereg1CsvEntry, type: :model do
           # swallow error
         end
 
-        after_state = [place.reload.ucf_list, file.reload.ucf_list]
+        after_state = [(place.class.find(place.id)).ucf_list, (file.class.find(file.id)).ucf_list]
 
         expect(after_state).to eq(before_state)
       end
