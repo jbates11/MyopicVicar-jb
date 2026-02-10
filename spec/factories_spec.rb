@@ -2,7 +2,9 @@ require 'rails_helper'
 
 RSpec.describe 'FactoryBot' do
   it 'lints all factories' do
-    # Use transaction rollback for speed
-    FactoryBot.lint
+    # Ensure DB state is isolated while linting factories
+    DatabaseCleaner[:mongoid].cleaning do
+      FactoryBot.lint
+    end
   end
 end
