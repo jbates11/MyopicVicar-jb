@@ -80,8 +80,11 @@ MyopicVicar::Application.configure do
   #rails 4 changes
   config.eager_load = false
   #config.active_record.mass_assignment_sanitizer = :strict
-  config.serve_static_files = true
-  config.assets.compile = true
+  
+  # config.serve_static_files = true  # JC for Rails 4
+  config.public_file_server.enabled = true # Rails 5.1 replacement for serve_static_files
+
+  config.assets.compile = false # JC  previously true, not required in test
   config.assets.compress = false
   config.assets.debug = false
   config.assets.digest = false
