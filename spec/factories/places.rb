@@ -9,6 +9,9 @@ FactoryBot.define do
     latitude     { "52.6309" }
     longitude    { "1.2974" }
     ucf_list     { {} }
+    ucf_list_updated_at    { nil }
+    ucf_list_record_count  { 0 }
+    ucf_list_file_count    { 0 }
 
     # trait :with_data do
     #   after(:create) do |place|
