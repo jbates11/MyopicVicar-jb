@@ -712,14 +712,10 @@ namespace :foo do
         message_file.flush
         puts "#{msg}"
 
-        # Debugging with AwesomePrint
-        # puts "--- Freereg1CsvFile file:"
-        # ap file.attributes, indent: -2
-        # ap file.attributes, indent: -2, index: false
-
         # Update UCF list with this Place's Freereg1CsvFile file
         begin
           place.update_ucf_list(file)
+          place.ucf_list[file.id.to_s] ||= [] 
           file.save!
         rescue => e
           Rails.logger.error "Error updating file #{file.file_name} for place #{place.place_name}: #{e.message}"
