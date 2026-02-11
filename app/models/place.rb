@@ -667,8 +667,14 @@ class Place
     end
   end
 
+  # def ucf_record_ids
+  #   self.ucf_list.values.inject([]) { |accum, value| accum + value }
+  # end
+  
   def ucf_record_ids
-    self.ucf_list.values.inject([]) { |accum, value| accum + value }
+    # .compact removes any nils to prevent crashes
+    # .flatten(1) turns the nested arrays into one single array
+    self.ucf_list.values.compact.flatten(1)
   end
 
   def update_reg_data_present
@@ -754,6 +760,9 @@ class Place
     self.ucf_list_updated_at  = now
     self.ucf_list_record_count = ucf_record_ids.size
     self.ucf_list_file_count   = ucf_list.keys.size
+
+    file.save
+    self.save
 
     Rails.logger.info(
       "UCF: summary | place_id: #{id} | file_id: #{file.id} | " \
