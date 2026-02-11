@@ -63,6 +63,10 @@ RSpec.describe 'freereg:clean_ucf_place_list' do
 
         rake_task.invoke
         (place.class.find(place.id))
+
+        # You must reload the place object from the database
+        place.reload 
+
         p "ucf_list: #{place.ucf_list}"  
         p "old_ucf_list: #{place.old_ucf_list}"  
 
@@ -72,6 +76,9 @@ RSpec.describe 'freereg:clean_ucf_place_list' do
       it 'removes entries for files with mismatched county' do
         rake_task.invoke
         (place.class.find(place.id))
+
+        # You must reload the place object from the database
+        place.reload 
 
         expect(place.ucf_list).not_to include(invalid_file.id.to_s)
       end
@@ -108,6 +115,9 @@ RSpec.describe 'freereg:clean_ucf_place_list' do
       it 'removes all entries for missing files' do
         rake_task.invoke
         (place.class.find(place.id))
+
+        # You must reload the place object from the database
+        place.reload 
 
         expect(place.ucf_list).to be_empty
       end
@@ -172,6 +182,9 @@ RSpec.describe 'freereg:clean_ucf_place_list' do
         rake_task.invoke
         (place.class.find(place.id))
 
+        # You must reload the place object from the database
+        place.reload 
+
         expect(place.ucf_list).to be_empty
       end
     end
@@ -195,6 +208,9 @@ RSpec.describe 'freereg:clean_ucf_place_list' do
         rake_task.invoke
         (place.class.find(place.id))
 
+        # You must reload the place object from the database
+        place.reload 
+        
         expect(place.ucf_list).to be_empty
       end
     end

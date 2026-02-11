@@ -138,6 +138,10 @@ RSpec.describe 'foo:refresh_ucf_lists task', type: :task do
       (place.class.find(place.id))
       (file.class.find(file.id))
 
+      # RELOAD the objects to get the data the Rake task wrote to MongoDB
+      place.reload
+      file.reload
+
       expect(place.ucf_list[file.id.to_s]).to include(record.id)
       expect(file.ucf_list).to include(record.id)
       expect(file.ucf_updated).to eq(DateTime.now.to_date)
@@ -158,6 +162,10 @@ RSpec.describe 'foo:refresh_ucf_lists task', type: :task do
       (place.class.find(place.id))
       (file.class.find(file.id))
 
+      # RELOAD the objects to get the data the Rake task wrote to MongoDB
+      place.reload     
+      file.reload
+
       expect(place.ucf_list[file.id.to_s]).to eq({})
       expect(file.ucf_list).to eq([])
       expect(file.ucf_updated).to eq(DateTime.now.to_date)
@@ -174,6 +182,10 @@ RSpec.describe 'foo:refresh_ucf_lists task', type: :task do
       task.invoke
       (place.class.find(place.id))
       (file.class.find(file.id))
+
+      # RELOAD the objects to get the data the Rake task wrote to MongoDB
+      place.reload     
+      file.reload
 
       expect(place.ucf_list[file.id.to_s]).to eq({})
       expect(file.ucf_list).to eq([])
