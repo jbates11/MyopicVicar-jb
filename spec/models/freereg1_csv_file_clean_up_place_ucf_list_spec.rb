@@ -48,6 +48,21 @@ RSpec.describe Freereg1CsvFile, type: :model do
         }
       end
 
+      it "updates place counters atomically" do
+        place.update(
+          ucf_list: {
+            file.id.to_s => ["SR1", "SR2"],
+            "other_id" => ["SR3"]
+          }
+        )
+
+        file.clean_up_place_ucf_list
+
+        fresh_place = Place.find(place.id)
+        expect(fresh_place.ucf_list_record_count).to eq(1)  # Only SR3 remains
+        expect(fresh_place.ucf_list_file_count).to eq(1)    # Only other file
+      end
+
       it "removes this file's entry from the place ucf_list" do
         file.clean_up_place_ucf_list
 
