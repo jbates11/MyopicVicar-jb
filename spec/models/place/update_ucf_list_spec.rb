@@ -47,7 +47,7 @@ RSpec.describe Place, type: :model do
         place.update_ucf_list(file)
 
         fresh_place = Place.find(place.id)
-        expect(fresh_place.ucf_list[file.id.to_s]).to eq({})
+        expect(fresh_place.ucf_list[file.id.to_s]).to eq([])
       end
 
       it "sets file.ucf_list to empty array" do
@@ -83,6 +83,14 @@ RSpec.describe Place, type: :model do
 
         fresh_place = Place.find(place.id)
         expect(fresh_place.ucf_list_file_count).to eq(1)
+      end
+
+      it "ensures all values in ucf_list are Arrays (never Hash)" do
+        place.update_ucf_list(file)
+        
+        place.ucf_list.each_value do |value|
+          expect(value).to be_an(Array), "Expected Array but got #{value.class}"
+        end
       end
     end
 

@@ -166,7 +166,7 @@ RSpec.describe 'foo:refresh_ucf_lists task', type: :task do
       place.reload     
       file.reload
 
-      expect(place.ucf_list[file.id.to_s]).to eq({})
+      expect(place.ucf_list[file.id.to_s]).to eq([])
       expect(file.ucf_list).to eq([])
       expect(file.ucf_updated).to eq(DateTime.now.to_date)
     end
@@ -187,7 +187,7 @@ RSpec.describe 'foo:refresh_ucf_lists task', type: :task do
       place.reload     
       file.reload
 
-      expect(place.ucf_list[file.id.to_s]).to eq({})
+      expect(place.ucf_list[file.id.to_s]).to eq([])
       expect(file.ucf_list).to eq([])
       expect(file.ucf_updated).to eq(DateTime.now.to_date)
     end
