@@ -714,6 +714,10 @@ class SearchRecord
   #   end
   # end
 
+
+  # Returns the SearchName object if found (truthy), or nil (falsy)
+  # Used in entry edit logic where truthiness is sufficient
+  # Callers: Freereg1CsvEntry#update_place_ucf_list
   def contains_wildcard_ucf?
     Rails.logger.info "Checking SearchRecord #{id} for wildcard UCFs..."
 
@@ -731,7 +735,9 @@ class SearchRecord
     end
     
     Rails.logger.debug "ucf_name: #{ucf_name.ai}"
-    ucf_name
+
+    # Explicit boolean conversion for clarity
+    !!ucf_name
   end
 
 
