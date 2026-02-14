@@ -1013,6 +1013,23 @@ end
   # end
 
   def update_place_ucf_list(place, file, old_search_record)
+    # --- Guard: Ensure required associations exist ---
+    unless place.present? && file.present?
+      Rails.logger.warn(
+        "UCF: Aborting update_place_ucf_list | reason: missing association | " \
+        "entry_id: #{id} | place: #{place.present?} | file: #{file.present?}"
+      )
+      return
+    end
+
+    unless search_record.present?
+      Rails.logger.warn(
+        "UCF: Aborting update_place_ucf_list | reason: search_record missing | " \
+        "entry_id: #{id} | file_id: #{file.id}"
+      )
+      return
+    end
+
     file_key = file.id.to_s
     file_in_ucf_list = place.ucf_list.key?(file_key)
     search_record_has_ucf = search_record.contains_wildcard_ucf?.present?
@@ -1699,6 +1716,13 @@ end
 
   def update_and_save(file, place, message)
     file.ucf_updated = Date.today
+
+    # --- Recalculate place counters and timestamp ---
+    place.ucf_list_record_count = place.ucf_record_ids.size
+    place.ucf_list_file_count   = place.ucf_list.keys.size
+    place.ucf_list_updated_at   = DateTime.now
+
+  # --- Persist changes ---
     file.save
     place.save
 
