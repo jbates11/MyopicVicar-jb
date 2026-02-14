@@ -86,7 +86,8 @@ class Place
 
   index({ data_present: 1, "ucf_list" => 1 }, { 
     name: "data_present_ucf_list",
-    sparse: true
+    sparse: true,
+    background: true
   })
   
   has_many :churches, dependent: :restrict_with_error
@@ -674,7 +675,7 @@ class Place
   def ucf_record_ids
     # .compact removes any nils to prevent crashes
     # .flatten(1) turns the nested arrays into one single array
-    self.ucf_list.values.compact.flatten(1)
+    self.ucf_list.values.compact.flatten(1).uniq
   end
 
   def update_reg_data_present
@@ -730,11 +731,13 @@ class Place
     Rails.logger.debug "Flagged SearchRecord IDs from File #{file.id}: #{ids.inspect}"
 
     # --- Update Place + File --------------------------------------------------
+    file_key = file.id.to_s
 
     if ids.present?
+      # Case: Wildcard records found
+      
       # Place-level UCF list
-      self.ucf_list[file.id.to_s] = ids
-
+      self.ucf_list[file_key] = ids  # Array of IDs
       # File-level UCF list
       file.ucf_list = ids
 
@@ -742,8 +745,9 @@ class Place
         "UCF: wildcard records found | place_id: #{id} | file_id: #{file.id} | count: #{ids.size}"
       )
     else
-      # Explicit empty states
-      self.ucf_list[file.id.to_s] = {}
+      # Case: No wildcard records - Explicit empty states 
+      # self.ucf_list.delete(file_key) # alternate approach
+      self.ucf_list[file.id.to_s] = []
       file.ucf_list = []
 
       Rails.logger.info(
