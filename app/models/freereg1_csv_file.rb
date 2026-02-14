@@ -662,34 +662,52 @@ class Freereg1CsvFile
     end
 
     # --- Load the Place’s UCF list safely ---
-    place_list = place.ucf_list || {}
+    # place_list = place.ucf_list || {}
     file_id    = id.to_s
 
-    # --- Idempotency Check: If the Place already does NOT reference this file ---
-    unless place_list.key?(file_id)
-      Rails.logger.info("[Freereg1CsvFile##{id}] Place already clean; no entry to remove")
-    else
-      # Remove only this file’s entry
-      cleaned_list = place_list.reject { |key, _value| key == file_id }
-
-      # Only write if something actually changed
-      if cleaned_list != place_list
-        Rails.logger.info("[Freereg1CsvFile##{id}] Removing entry from Place##{place.id} ucf_list")
-        place.update(ucf_list: cleaned_list)
+    begin
+      # --- Idempotency Check: If the Place already does NOT reference this file ---
+      unless place_list.key?(file_id)
+        Rails.logger.info("[Freereg1CsvFile##{id}] Place already clean; no entry to remove")
       else
-        Rails.logger.info("[Freereg1CsvFile##{id}] No changes needed for Place##{place.id}")
+        # Remove only this file’s entry
+        cleaned_list = place_list.reject { |key, _value| key == file_id }
+
+        # Only write if something actually changed
+        if cleaned_list != place_list
+          Rails.logger.info("[Freereg1CsvFile##{id}] Removing entry from Place##{place.id} ucf_list")
+          
+          # Atomic update with counters
+          place.update(
+            ucf_list: cleaned_list,
+            ucf_list_updated_at: DateTime.now,
+            ucf_list_file_count: cleaned_list.keys.size,
+            ucf_list_record_count: cleaned_list.values.flatten.compact.uniq.size
+            )
+        else
+          Rails.logger.info("[Freereg1CsvFile##{id}] No changes needed for Place##{place.id}")
+        end
       end
+
+      # --- Clean this file’s own list (idempotent) ---
+      if self.ucf_list.present?
+        Rails.logger.info("[Freereg1CsvFile##{id}] Clearing this file’s own ucf_list")
+        update(ucf_list: [])
+      else
+        Rails.logger.info("[Freereg1CsvFile##{id}] File ucf_list already empty")
+      end
+
+      Rails.logger.info("[Freereg1CsvFile##{id}] Finished clean_up_place_ucf_list")
+
+    rescue StandardError => e
+      Rails.logger.error(
+        "[Freereg1CsvFile##{id}] Failed during clean_up_place_ucf_list: " \
+        "#{e.class} - #{e.message}"
+      )
+      raise e
     end
 
-    # --- Clean this file’s own list (idempotent) ---
-    if self.ucf_list.present?
-      Rails.logger.info("[Freereg1CsvFile##{id}] Clearing this file’s own ucf_list")
-      update(ucf_list: [])
-    else
-      Rails.logger.info("[Freereg1CsvFile##{id}] File ucf_list already empty")
-    end
 
-    Rails.logger.info("[Freereg1CsvFile##{id}] Finished clean_up_place_ucf_list")
   end
 
 
