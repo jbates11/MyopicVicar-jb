@@ -74,8 +74,31 @@ namespace :ucf do
       # ---------------------------------------------------------
       #
       updated_ucf.each do |file_id, ids|
-        next unless ids.is_a?(Array)
+        # next unless ids.is_a?(Array)
 
+        # --- Handle type mismatch ---
+        if !ids.is_a?(Array)
+          issues << {
+            place_id: place.id.to_s,
+            issue: "Invalid type in ucf_list value",
+            file_id: file_id,
+            actual_type: ids.class.name,
+            value_sample: ids.inspect
+          }
+
+          if apply_fixes
+            # Options:
+            # A) Convert Hash to empty array (minimal fix)
+            # B) Delete entire entry (aggressive fix)
+            # Using option A to match new Place#update_ucf_list semantics
+            ucf_list[file.id.to_s] = []
+            # updated_ucf.delete(file_id) # D) alternate approach
+            changed = true
+          end
+          next
+        end
+
+        # --- Orphaned record IDs (Array case) ---
         valid_ids = ids.select { |rid| existing_record_ids.include?(rid) }
 
         if valid_ids.size != ids.size
