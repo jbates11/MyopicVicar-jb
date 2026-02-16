@@ -662,7 +662,7 @@ class Freereg1CsvFile
     end
 
     # --- Load the Place’s UCF list safely ---
-    # place_list = place.ucf_list || {}
+    place_list = place.ucf_list || {}
     file_id    = id.to_s
 
     begin
