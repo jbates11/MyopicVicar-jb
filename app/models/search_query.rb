@@ -1331,23 +1331,15 @@ end
     # Debug: starting UCF search
     Rails.logger.warn("\n\n[SEARCH_UCF] Starting UCF search at #{start_ucf_time}")
 
-    Rails.logger.info(
-      "UCF: Operation",
-      action: "add_record",
-      place_id: place.id,
-      file_id: file.id,
-      record_id: search_record.id
-    )
+    Rails.logger.info "UCF: Operation | action: add_record"
 
     # Debug: place_ids
     Rails.logger.warn("[SEARCH_UCF] place_ids:\n#{place_ids.ai}")
-    # ap place_ids, indent: -2
 
     # Step 1: Extract UCF records
     ucf_records = Place.extract_ucf_records(place_ids)
 
     Rails.logger.warn("[SEARCH_UCF] --- Step 1 Raw UCF records extracted from Place (Search Record ID):\n#{ucf_records.ai}")
-    # ap ucf_records, indent: -2
 
     # Step 2: Filter UCF records
     Rails.logger.warn("[SEARCH_UCF] --- Step 2 Start filtering UCF records")
@@ -1356,7 +1348,6 @@ end
 
     Rails.logger.warn("[SEARCH_UCF] --- Step 2a Filtered UCF records (Search Record ID):\n#{filtered_ucf_records.inspect}")
     # Rails.logger.warn("[SEARCH_UCF] --- Step 2a Filtered UCF records (Search Record ID):\n#{filtered_ucf_records.ai}")
-    # ap ucf_records, indent: -2
 
     # Step 3: Count + assign to search_result model (not a db), ucf_records field
     if filtered_ucf_records.present?
@@ -1368,7 +1359,6 @@ end
       search_result.ucf_records = filtered_ucf_records.map { |sr| sr.id }
 
       Rails.logger.warn("[SEARCH_UCF] --- Step 3a Stored filtered UCF record IDs (Search Record ID) to search_result model, ucf_records field:\n#{search_result.ucf_records.ai}")
-      # ap search_result.ucf_records, indent: -2
     else
       ucf_filtered_count = 0
       Rails.logger.warn("[SEARCH_UCF] --- Step 3b No UCF records found")
@@ -1384,7 +1374,6 @@ end
 
     # Debug: final object state before save
     Rails.logger.warn("[SEARCH_UCF] --- Step 4a Final SearchQuery state before save:\n#{self.attributes.ai}")
-    # ap self.attributes, indent: -2
 
     save
   end  

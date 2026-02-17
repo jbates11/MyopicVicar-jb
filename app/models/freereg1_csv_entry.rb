@@ -965,13 +965,7 @@ end
     file_in_ucf_list = place.ucf_list.key?(file_key)
     search_record_has_ucf = search_record.contains_wildcard_ucf?.present?
 
-    Rails.logger.info(
-      "UCF: Operation",
-      action: "add_record",
-      place_id: place.id,
-      file_id: file.id,
-      record_id: search_record.id
-    )
+    Rails.logger.info "UCF: Operation | action: add_record, place_id: #{place.id}, file_id: #{file.id}, record_id: #{search_record.id}"
 
     Rails.logger.info { "---▶ update_place_ucf_list called" }
     Rails.logger.info { "---   file_key: #{file_key}" }
