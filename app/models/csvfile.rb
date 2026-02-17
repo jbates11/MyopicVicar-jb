@@ -17,6 +17,8 @@ class Csvfile < CarrierWave::Uploader::Base
   
   def check_for_existing_file_and_save
     # this saves the exiting file in the attic
+    Rails.logger.info "[check_for_existing_file_and_save] Start of method"
+
     process = true
     batch = PhysicalFile.where(userid: userid, file_name: file_name, base: true).first
     if batch.present?
@@ -36,6 +38,8 @@ class Csvfile < CarrierWave::Uploader::Base
         end
       end
     end
+    Rails.logger.info "[check_for_existing_file_and_save] Start of method"
+
     process
   end
 
@@ -58,6 +62,7 @@ class Csvfile < CarrierWave::Uploader::Base
   end
 
   def create_batch_unless_exists
+    Rails.logger.info "[create_batch_unless_exists] Start of method"
     batch = PhysicalFile.where(userid: userid, file_name: file_name).first
     if batch.present?
       batch.update_attributes(base: true, base_uploaded_date: Time.now, file_processed: false)
@@ -65,6 +70,7 @@ class Csvfile < CarrierWave::Uploader::Base
       batch = PhysicalFile.new(userid: userid, file_name: file_name, base: true, base_uploaded_date: Time.now, file_processed: false)
       batch.save
     end
+    Rails.logger.info "[create_batch_unless_exists] Start of method"
     batch
   end
 
@@ -85,17 +91,21 @@ class Csvfile < CarrierWave::Uploader::Base
   end
 
   def estimate_time
+    Rails.logger.info "[estimate_time] Start of method"
     size = 1
     place = File.join(Rails.application.config.datafiles, userid, file_name)
     size = File.size(place)
     unit = 0.001
     processing_time = (size.to_i * unit).to_i
+    Rails.logger.info "[estimate_time] Start of method"
     processing_time
   end
 
   def estimate_size
+    Rails.logger.info "[estimate_size] Start of method"
     place = File.join(Rails.application.config.datafiles, userid, file_name)
     size = File.size?(place)
+    Rails.logger.info "[estimate_size] Start of method"
     size
   end
 
@@ -178,6 +188,8 @@ class Csvfile < CarrierWave::Uploader::Base
   def setup_batch_on_replace(original_file_name)
     return false, 'The file you are replacing must have the same name' unless check_name(original_file_name)
 
+    Rails.logger.info "[setup_batch_on_replace] Start of method"
+
     proceed = true
     proceed = physical_file_for_user_exists
     #lets check that the file has indeed been processed previously.
@@ -205,6 +217,9 @@ class Csvfile < CarrierWave::Uploader::Base
       message = 'A situation has occurred that should not have. Please have your coordinator contact system administration.'
       proceed = false
     end
+
+    Rails.logger.info "[setup_batch_on_replace] End of method"
+
     [proceed, message]
   end
 
