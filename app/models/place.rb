@@ -700,7 +700,7 @@ class Place
 
   def update_ucf_list(file)
     Rails.logger.info(
-      "UCF: Operation | action: update_ucf_list | place_id: #{id} | file_id: #{file.id} | record_id: {search_record.id}"
+      "UCF: Operation | action: update_ucf_list | place_id: #{id} | file_id: #{file.id}"
     )
 
     Rails.logger.info "Updating UCF list for Place #{id} with File #{file.id}..."

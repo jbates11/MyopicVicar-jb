@@ -1332,7 +1332,7 @@ end
     Rails.logger.warn("\n\n[SEARCH_UCF] Starting UCF search at #{start_ucf_time}")
 
     Rails.logger.info(
-      "UCF: Operation | action: search_ucf | place_id: #{place.id} | file_id: #{file.id} | record_id: #{search_record.id}"
+      "UCF: Operation | action: search_ucf"
     )
 
     # Debug: place_ids

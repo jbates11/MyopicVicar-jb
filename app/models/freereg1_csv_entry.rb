@@ -446,7 +446,7 @@ def clean_up_ucf_list
   proceed, place, _church, _register = file.location_from_file
 
   Rails.logger.info(
-  "UCF: Operation | action: clean_up_ucf_list | place_id: #{place.id} | file_id: #{file.id} | record_id: {search_record.id}"
+  "UCF: Operation | action: clean_up_ucf_list | place_id: #{place.id} | file_id: #{file.id}"
   )
 
   # Guard: no associated search_record, nothing to remove from UCF lists
