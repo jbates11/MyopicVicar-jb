@@ -736,8 +736,8 @@ class SearchRecord
     
     Rails.logger.debug "ucf_name: #{ucf_name.ai}"
 
-    # Explicit boolean conversion for clarity
-    !!ucf_name
+    # return the object or nil (falsy)
+    ucf_name
   end
 
 
