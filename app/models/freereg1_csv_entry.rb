@@ -1032,7 +1032,7 @@ end
 
     file_key = file.id.to_s
     file_in_ucf_list = place.ucf_list.key?(file_key)
-    search_record_has_ucf = search_record.contains_wildcard_ucf?.present?
+    search_record_has_ucf = search_record.contains_wildcard_ucf.present?
 
     Rails.logger.info(
       "UCF: Operation | action: update_place_ucf_list | place_id: #{place.id} | file_id: #{file.id} | record_id: #{search_record.id}"

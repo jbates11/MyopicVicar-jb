@@ -15,7 +15,7 @@ RSpec.describe Freereg1CsvEntry, type: :model do
   before do
     # The model expects `search_record` to be available as a method
     allow(entry).to receive(:search_record).and_return(search_record)
-    allow(search_record).to receive(:contains_wildcard_ucf?).and_return(search_record_has_ucf)
+    allow(search_record).to receive(:contains_wildcard_ucf).and_return(search_record_has_ucf)
   end
 
     # -------------------------------------------------------------------------
@@ -149,7 +149,7 @@ RSpec.describe Freereg1CsvEntry, type: :model do
         ssr1 = create(:search_record, id: "SSR1")
         ssr2 = create(:search_record, id: "SSR2")
 
-        allow(ssr1).to receive(:contains_wildcard_ucf?).and_return(true)
+        allow(ssr1).to receive(:contains_wildcard_ucf).and_return(true)
 
         allow(entry).to receive(:search_record).and_return(ssr1)
         entry.update_place_ucf_list(place, file, nil)

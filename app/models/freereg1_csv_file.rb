@@ -970,7 +970,7 @@ class Freereg1CsvFile
       sr = entry.search_record
 
       if sr
-        flagged = sr.contains_wildcard_ucf?  # search_record
+        flagged = sr.contains_wildcard_ucf  # search_record
         Rails.logger.debug "Entry #{entry.id} -> SearchRecord #{sr.id} flagged? #{flagged}"
 
         if flagged
