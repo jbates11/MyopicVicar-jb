@@ -116,7 +116,7 @@ class CsvfileBatchProcessingRunner
   def handle_freereg_processing(csvfile:, user:, batch:, range:, processing_time:, trace_id:, timestamp:)
     if user.person_role == "trainee"
 
-      Rails.logger.info "[CSVfile Batch Processing Runner] spawn rake build:freereg_new_update"
+      Rails.logger.info "[CSVfile Batch Processing Runner] trainee: spawn rake build:freereg_new_update"
       Kernel.spawn(
         "rake build:freereg_new_update[\"no_search_records\",\"individual\",\"no\",#{range}]"
       )
