@@ -1013,7 +1013,18 @@ end
   # end
 
   def update_place_ucf_list(place, file, old_search_record)
-    # --- Guard: Ensure required associations exist ---
+    # Early guards prevent cascading errors
+    return Rails.logger.warn("UCF: Entry destroyed") if destroyed?
+    return Rails.logger.warn("UCF: File destroyed") if file.destroyed?
+    return Rails.logger.warn("UCF: Place destroyed") if place.destroyed?
+    return Rails.logger.warn("UCF: No search record") if search_record.blank?
+    
+    if old_search_record.present? && old_search_record.destroyed?
+      Rails.logger.warn("UCF: Old SR deleted | entry: #{id}")
+      old_search_record = nil
+    end
+
+    # Guard: Ensure required associations exist
     unless place.present? && file.present?
       Rails.logger.warn(
         "UCF: Aborting update_place_ucf_list | reason: missing association | " \
