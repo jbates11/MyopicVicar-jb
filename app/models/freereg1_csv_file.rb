@@ -706,8 +706,6 @@ class Freereg1CsvFile
       )
       raise e
     end
-
-
   end
 
 
