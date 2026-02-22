@@ -83,12 +83,6 @@ class Place
   index({ chapman_code: 1, data_present: 1,disabled: 1,error_flag: 1}, {name: "chapman_data_present_disabled_error_flag"})
   index({ chapman_code: 1, _id: 1, disabled: 1, data_present: 1}, {name: "chapman_place_disabled_data_present"})
   index({ location: "2dsphere" }, { min: -200, max: 200 })
-
-  index({ data_present: 1, "ucf_list" => 1 }, { 
-    name: "data_present_ucf_list",
-    sparse: true,
-    background: true
-  })
   
   has_many :churches, dependent: :restrict_with_error
   has_many :search_records
