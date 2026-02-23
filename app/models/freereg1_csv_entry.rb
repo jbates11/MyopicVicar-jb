@@ -1013,37 +1013,6 @@ end
   # end
 
   def update_place_ucf_list(place, file, old_search_record)
-    # # Early guards prevent cascading errors
-    # return Rails.logger.warn("UCF: Entry destroyed") if destroyed?
-    # return Rails.logger.warn("UCF: File missing") if file.nil?
-    # return Rails.logger.warn("UCF: File destroyed") if file.destroyed?
-    # return Rails.logger.warn("UCF: Place missing") if place.nil?
-    # return Rails.logger.warn("UCF: Place destroyed") if place.destroyed?
-    # return Rails.logger.warn("UCF: Search Record missing") if search_record.nil?
-    # return Rails.logger.warn("UCF: search_record missing") if search_record.blank?
-
-    # if old_search_record.present? && old_search_record.destroyed?
-    #   Rails.logger.warn("UCF: Old SR deleted | entry: #{id}")
-    #   old_search_record = nil
-    # end
-
-    # # Guard: Ensure required associations exist
-    # unless place.present? && file.present?
-    #   Rails.logger.warn(
-    #     "UCF: Aborting update_place_ucf_list | reason: missing association | " \
-    #     "entry_id: #{id} | place: #{place.present?} | file: #{file.present?}"
-    #   )
-    #   return
-    # end
-
-    # unless search_record.present?
-    #   Rails.logger.warn(
-    #     "UCF: Aborting update_place_ucf_list | reason: search_record missing | " \
-    #     "entry_id: #{id} | file_id: #{file.id}"
-    #   )
-    #   return
-    # end
-
     # Validate all preconditions before attempting update
     valid, error_message = validate_ucf_update_preconditions(place, file, old_search_record)
 
@@ -1063,7 +1032,7 @@ end
     search_record_has_ucf = search_record.contains_wildcard_ucf.present?
 
     Rails.logger.info(
-      "UCF: Operation | action: update_place_ucf_list | place_id: #{place.id} | file_id: #{file.id} | record_id: #{search_record.id}"
+      "UCF: Validation complete| action: update_place_ucf_list | place_id: #{place.id} | file_id: #{file.id} | record_id: #{search_record.id}"
     )
 
     Rails.logger.info { "---▶ update_place_ucf_list called" }
@@ -1074,14 +1043,14 @@ end
     Rails.logger.info { "---   current search_record: #{search_record.id}" }
 
     Rails.logger.info { "--- initial place ucf_list" }
-    logger.info "---place_ucf:\n #{place.ucf_list.ai(index: true, plain: true)}"
+    logger.info "---place_ucf:\n #{place.ucf_list.ai}"
     Rails.logger.info { "--- initial file ucf_list" }
     logger.info "---file_ucf:\n #{file.ucf_list.ai}"
-    # logger.info "---file_ucf:\n #{file.ucf_list.ai(index: true, plain: true)}"
 
-    # Case 0: No change
+    # Case 0: No change required
     return unless file_in_ucf_list || search_record_has_ucf
-
+  
+    # Single persistence wrapper with rollback capability
     safe_update_ucf!(place, file) do
       if file_in_ucf_list && search_record_has_ucf
         handle_add_ucf(place, file, file_key, old_search_record)
@@ -1093,6 +1062,10 @@ end
         handle_new_ucf(place, file, file_key)
       end
     end
+
+    Rails.logger.info(
+      "[UCF] Update complete | place_id: #{place.id} | file_id: #{file.id} | entry_id: #{id}"
+    )
   end
 
   def errors_in_fields
