@@ -36,7 +36,7 @@ RSpec.describe Freereg1CsvEntry, type: :model do
       end
 
       it "logs warning about missing search_record" do
-        expect(Rails.logger).to receive(:warn).with(/search_record missing/)
+        expect(Rails.logger).to receive(:warn).with(/SearchRecord missing/)
         entry.update_place_ucf_list(place, file, old_search_record)
       end
 
@@ -46,7 +46,6 @@ RSpec.describe Freereg1CsvEntry, type: :model do
         expect(place.ucf_list).to be_empty
         expect(file.ucf_list).to be_blank
       end
-    # end
 
       context "when place or file is missing" do
         it "aborts gracefully" do
