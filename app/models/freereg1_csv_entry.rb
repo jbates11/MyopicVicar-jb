@@ -668,7 +668,7 @@ end
   #   return [false] unless Freereg1CsvFile.freereg1_csv_file_valid?(file)
 
   #   my_file = Freereg1CsvFile.find_by(_id: file)
-    
+
   #   my_register = my_file.register
   #   return [false] unless Register.register_valid?(my_register)
 
@@ -990,7 +990,7 @@ end
   #     place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == search_record.id.to_s }
   #     file.ucf_list.delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present? && file.ucf_list.present?
   #     file.ucf_list.delete_if { |record| record.to_s == search_record.id.to_s } if file.ucf_list.present?
-      
+
   #     file.ucf_updated = DateTime.now.to_date
   #     file.save
   #     place.save
@@ -1013,33 +1013,50 @@ end
   # end
 
   def update_place_ucf_list(place, file, old_search_record)
-    # Early guards prevent cascading errors
-    return Rails.logger.warn("UCF: Entry destroyed") if destroyed?
-    return Rails.logger.warn("UCF: File destroyed") if file.destroyed?
-    return Rails.logger.warn("UCF: Place destroyed") if place.destroyed?
-    return Rails.logger.warn("UCF: No search record") if search_record.blank?
-    
-    if old_search_record.present? && old_search_record.destroyed?
-      Rails.logger.warn("UCF: Old SR deleted | entry: #{id}")
-      old_search_record = nil
-    end
+    # # Early guards prevent cascading errors
+    # return Rails.logger.warn("UCF: Entry destroyed") if destroyed?
+    # return Rails.logger.warn("UCF: File missing") if file.nil?
+    # return Rails.logger.warn("UCF: File destroyed") if file.destroyed?
+    # return Rails.logger.warn("UCF: Place missing") if place.nil?
+    # return Rails.logger.warn("UCF: Place destroyed") if place.destroyed?
+    # return Rails.logger.warn("UCF: Search Record missing") if search_record.nil?
+    # return Rails.logger.warn("UCF: search_record missing") if search_record.blank?
 
-    # Guard: Ensure required associations exist
-    unless place.present? && file.present?
+    # if old_search_record.present? && old_search_record.destroyed?
+    #   Rails.logger.warn("UCF: Old SR deleted | entry: #{id}")
+    #   old_search_record = nil
+    # end
+
+    # # Guard: Ensure required associations exist
+    # unless place.present? && file.present?
+    #   Rails.logger.warn(
+    #     "UCF: Aborting update_place_ucf_list | reason: missing association | " \
+    #     "entry_id: #{id} | place: #{place.present?} | file: #{file.present?}"
+    #   )
+    #   return
+    # end
+
+    # unless search_record.present?
+    #   Rails.logger.warn(
+    #     "UCF: Aborting update_place_ucf_list | reason: search_record missing | " \
+    #     "entry_id: #{id} | file_id: #{file.id}"
+    #   )
+    #   return
+    # end
+
+    # Validate all preconditions before attempting update
+    valid, error_message = validate_ucf_update_preconditions(place, file, old_search_record)
+
+    unless valid
       Rails.logger.warn(
-        "UCF: Aborting update_place_ucf_list | reason: missing association | " \
-        "entry_id: #{id} | place: #{place.present?} | file: #{file.present?}"
+        "[UCF] Validation failed | reason: #{error_message} | entry_id: #{id}"
       )
       return
     end
 
-    unless search_record.present?
-      Rails.logger.warn(
-        "UCF: Aborting update_place_ucf_list | reason: search_record missing | " \
-        "entry_id: #{id} | file_id: #{file.id}"
-      )
-      return
-    end
+    # Remove destroyed old_search_record from further processing
+    old_search_record = nil if old_search_record.present? && old_search_record.destroyed?
+
 
     file_key = file.id.to_s
     file_in_ucf_list = place.ucf_list.key?(file_key)
@@ -1626,6 +1643,7 @@ end
       p "freereg entry validations #{id} no record type"
     end
   end
+  
   def get_listing_of_witnesses
     witnesses = Array.new
     single_witness = Array.new(2)
@@ -1676,7 +1694,7 @@ end
     rescue => e
       # Rollback on failure
       Rails.logger.error "safe_update_ucf! rollback triggered: #{e.class} - #{e.message}"
-      
+
       place.ucf_list = original_place_list
       file.ucf_list  = original_file_list
 
@@ -1743,5 +1761,50 @@ end
     logger.info "---file_ucf:\n #{file.ucf_list.ai(index: true, plain: true)}"
   end
 
+
+  def validate_ucf_update_preconditions(place, file, old_search_record)
+    # === Check 1: Entry exists ===
+    unless persisted?
+      return [false, "Entry not persisted to database"]
+    end
+
+    # === Check 2: Entry not destroyed ===
+    if destroyed?
+      return [false, "Entry has been destroyed"]
+    end
+
+    # === Check 3: File exists and not destroyed ===
+    unless file.present?
+      return [false, "File not provided"]
+    end
+
+    if file.destroyed?
+      return [false, "File has been destroyed (id: #{file._id})"]
+    end
+
+    # === Check 4: Place exists and not destroyed ===
+    unless place.present?
+      return [false, "Place not provided"]
+    end
+
+    if place.destroyed?
+      return [false, "Place has been destroyed (id: #{place._id})"]
+    end
+
+    # === Check 5: SearchRecord present ===
+    unless search_record.present?
+      return [false, "SearchRecord not found for entry"]
+    end
+
+    # === Check 6: Old SearchRecord (if any) state ===
+    if old_search_record.present? && old_search_record.destroyed?
+      # Not an error - just log and continue with nil
+      Rails.logger.debug("Old SearchRecord destroyed for entry #{id}")
+    end
+
+    # All validations passed
+    [true, ""]
+
+  end
 
 end
