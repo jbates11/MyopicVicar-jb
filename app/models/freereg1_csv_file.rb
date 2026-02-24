@@ -708,6 +708,52 @@ class Freereg1CsvFile
     end
   end
 
+  # Replaces load-modify-save pattern with single atomic operation
+  def clean_up_place_ucf_list_atomic
+    return unless persisted?
+
+    proceed, place, _church, _register = location_from_file
+    return unless proceed && place.present?
+    
+    file_id_str = id.to_s
+    
+    # Fetch fresh place instance (no .reload)
+    fresh_place = Place.where(id: place.id).first
+    return unless fresh_place
+
+    record_count = fresh_place.ucf_list&.dig(file_id_str)&.size || 0
+
+    # If already cleaned up → idempotent no-op
+    return if record_count.zero?
+
+    Place.collection.update_one(
+      { _id: place.id },
+      {
+        '$unset' => { "ucf_list.#{file_id_str}" => '' },
+        '$inc' => {
+          # ucf_list_updated_at: Time.current,
+          ucf_list_file_count: -1,
+          ucf_list_record_count: -record_count
+        }
+      }
+    )
+    place.update(
+      ucf_list_updated_at: DateTime.now
+    )
+
+    # Update only fields that exist on Freereg1CsvFile
+    update(ucf_list: [])
+    
+    Rails.logger.info(
+      "[Freereg1CsvFile##{id}] Atomic cleanup complete: " \
+      "removed #{record_count} records from Place##{place.id}"
+    )
+  rescue StandardError => e
+    Rails.logger.error(
+      "[Freereg1CsvFile##{id}] Atomic cleanup failed: #{e.class} - #{e.message}"
+    )
+    raise e
+  end
 
   def define_colour
     # need to consider storing the processed rather than a look up
@@ -927,7 +973,8 @@ class Freereg1CsvFile
       # deal with file and its records
       add_to_rake_delete_list
       save_to_attic
-      clean_up_place_ucf_list
+      # clean_up_place_ucf_list
+      clean_up_place_ucf_list_atomic  
       delete
       # deal with the Physical Files collection
       PhysicalFile.delete_document(self.userid, self.file_name)
