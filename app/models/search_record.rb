@@ -75,6 +75,10 @@ class SearchRecord
   belongs_to :place, index: true, optional: true
 
   index({ place_id: 1, locations_names: 1 }, { name: 'place_location' })
+  # This speeds up the lookup of SearchRecords by their Entry ID
+  index({ freereg1_csv_entry_id: 1 })
+  # Allows MongoDB to index into the array of embedded documents.
+  index({ "search_names.first_name": 1, "search_names.last_name": 1 })
 
   CEN_CHAPMAN_INDEXES = {
     'county_ln_rt_sd' => ['chapman_code', 'search_names.last_name', 'record_type', 'search_date'],
