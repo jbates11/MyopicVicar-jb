@@ -93,7 +93,7 @@ module UcfTransformer
     end
 
     # Define the set of wildcard UCF characters
-    # wildcard_chars = ['*', '_', '?'] # square brackets display only one record as expect, curly brace NOT work
+    # wildcard_chars = ['*', '_', '?'] # square brackets display only one record as expected, curly brace NOT work
     wildcard_chars = ['*', '_', '?', '{', '}']
     # wildcard_chars = ['*', '_', '?', '{', '}', '[', ']']
 
