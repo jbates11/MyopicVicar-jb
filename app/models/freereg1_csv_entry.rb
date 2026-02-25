@@ -438,55 +438,55 @@ class Freereg1CsvEntry
   #   end
   # end
 
-def clean_up_ucf_list
-  # get associated freereg1_csv_file and assign to local variable
-  file = freereg1_csv_file
-  return if file.blank?
+  def clean_up_ucf_list
+    # get associated freereg1_csv_file and assign to local variable
+    file = freereg1_csv_file
+    return if file.blank?
 
-  proceed, place, _church, _register = file.location_from_file
+    proceed, place, _church, _register = file.location_from_file
 
-  Rails.logger.info(
-  "UCF: Operation | action: clean_up_ucf_list | place_id: #{place.id} | file_id: #{file.id} | record_id: {search_record.id}"
-  )
+    Rails.logger.info(
+    "UCF: Operation | action: clean_up_ucf_list | place_id: #{place.id} | file_id: #{file.id} | record_id: {search_record.id}"
+    )
 
-  # Guard: no associated search_record, nothing to remove from UCF lists
-  search_record = search_record()
-  return if search_record.blank?
+    # Guard: no associated search_record, nothing to remove from UCF lists
+    search_record = search_record()
+    return if search_record.blank?
 
-  # Normalize the ID once for reuse
-  search_record_id = search_record.id.to_s
+    # Normalize the ID once for reuse
+    search_record_id = search_record.id.to_s
 
-  # ---------------------------------------------------------
-  # 1. FILE-LEVEL UCF CLEANUP (Array)
-  # ---------------------------------------------------------
-  # Remove the ID from file.ucf_list atomically
-  # Freereg1CsvFile.where(id: file.id).update_one(
-  Freereg1CsvFile.where(id: file.id).update_all(
-    {
-      '$pull' => { 'ucf_list' => search_record_id },
-      '$set'  => { 'ucf_updated' => Time.zone.today }
-    }
-  )
-
-  # ---------------------------------------------------------
-  # 2. PLACE-LEVEL UCF CLEANUP (Hash of Arrays)
-  # ---------------------------------------------------------
-  return unless proceed && place.present?
-
-  # Normalize the ID once for reuse
-  file_key = file.id.to_s
-
-  # Only run if the place actually has a list for this file
-  if place.ucf_list[file_key].present?
-    # Remove the ID from place.ucf_list atomically
-    # Place.where(id: place.id).update_one(
-    Place.where(id: place.id).update_all(
+    # ---------------------------------------------------------
+    # 1. FILE-LEVEL UCF CLEANUP (Array)
+    # ---------------------------------------------------------
+    # Remove the ID from file.ucf_list atomically
+    # Freereg1CsvFile.where(id: file.id).update_one(
+    Freereg1CsvFile.where(id: file.id).update_all(
       {
-        '$pull' => { "ucf_list.#{file_key}" => search_record_id }
+        '$pull' => { 'ucf_list' => search_record_id },
+        '$set'  => { 'ucf_updated' => Time.zone.today }
       }
     )
+
+    # ---------------------------------------------------------
+    # 2. PLACE-LEVEL UCF CLEANUP (Hash of Arrays)
+    # ---------------------------------------------------------
+    return unless proceed && place.present?
+
+    # Normalize the ID once for reuse
+    file_key = file.id.to_s
+
+    # Only run if the place actually has a list for this file
+    if place.ucf_list[file_key].present?
+      # Remove the ID from place.ucf_list atomically
+      # Place.where(id: place.id).update_one(
+      Place.where(id: place.id).update_all(
+        {
+          '$pull' => { "ucf_list.#{file_key}" => search_record_id }
+        }
+      )
+    end
   end
-end
 
 
   def create_baptism_string
