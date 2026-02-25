@@ -22,9 +22,25 @@ FactoryBot.define do
     end
 
     # You can also add a trait for wildcards to make tests cleaner
+    # trait :with_wildcard_name do
+    #   after(:create) do |record|
+    #     record.search_names.create!(first_name: "Jo*n", last_name: "Doe")
+    #   end
+    # end
+
+    # Positive Trait
     trait :with_wildcard_name do
-      after(:create) do |record|
-        record.search_names.create!(first_name: "Jo*n", last_name: "Doe")
+      after(:build) do |search_record|
+        # We build the embedded SearchName with a character 
+        # that UcfTransformer.contains_wildcard_ucf? will catch
+        search_record.search_names << build(:search_name, first_name: "Jo*n")
+      end
+    end
+
+    # Negative Trait
+    trait :with_standard_name do
+      after(:build) do |record|
+        record.search_names << build(:search_name, first_name: "John", last_name: "Smith")
       end
     end
 
