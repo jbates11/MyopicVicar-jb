@@ -16,6 +16,19 @@ RSpec.describe Freereg1CsvFile, type: :model do
 
         expect(ids).to include(record.id)
       end
+
+      it "returns the IDs of flagged search records" do
+        entry  = create(:freereg1_csv_entry, freereg1_csv_file: file)
+        record = create(:search_record, freereg1_csv_entry: entry)
+
+        # Add embedded document correctly
+        record.search_names.create!(first_name: "Jo*n", last_name: "Doe")
+
+        ids = file.search_record_ids_with_wildcard_ucf
+
+        # Convert to strings to ensure the comparison passes regardless of BSON/String types
+        expect(ids.map(&:to_s)).to include(record.id.to_s)
+      end
     end
 
     context "when entries have search records without wildcard UCFs" do
