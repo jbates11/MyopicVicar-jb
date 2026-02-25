@@ -837,12 +837,21 @@ class CsvFile < CsvFiles
     end
   end
 
+  # def update_place_after_processing(freereg1_csv_file, chapman_code, place_name)
+  #   place = Place.where(:chapman_code => chapman_code, :place_name => place_name).first
+  #   return unless place.present?
+    
+  #   place.update_ucf_list(freereg1_csv_file)
+  #   place.save
+  #   freereg1_csv_file.save
+  # end
+
   def update_place_after_processing(freereg1_csv_file, chapman_code, place_name)
     place = Place.where(:chapman_code => chapman_code, :place_name => place_name).first
     return unless place.present?
     
-    place.update_ucf_list(freereg1_csv_file)
-    place.save
+    process_ucf_for_entries(freereg1_csv_file, place)  # ← NEW: Batch processing with collection
+    
     freereg1_csv_file.save
   end
 
@@ -908,6 +917,45 @@ class CsvFile < CsvFiles
       end #end record
     end
     return records, batch_errors, not_changed
+  end
+
+  # Process UCF (Uncertified/Wildcard Field) references for all entries in file
+  # Collects changes into Sets, then applies atomically to Place
+  # Much faster than iterative single updates
+  def process_ucf_for_entries(file, place)
+    # === Initialize change tracking ===
+    changes = { 
+      add: Set.new,      # SearchRecord IDs to add
+      remove: Set.new    # SearchRecord IDs to remove
+    }
+    
+    # === Stream entries and compute changes ===
+    # find_each: memory-efficient iteration for large files
+    # Processes entries in batches, doesn't load entire collection into memory
+    file.freereg1_csv_entries.find_each do |entry|
+      result = entry.compute_ucf_change(place, file, nil)
+      
+      if result.present? && result[:id].present?
+        changes[result[:action]] << result[:id]
+      end
+    end
+    
+    # === Apply changes atomically ===
+    # Only if there are actual changes to apply
+    if changes.values.any? { |set| set.present? && set.any? }
+      place.apply_ucf_batch_changes(file.id.to_s, changes)
+    else
+      Rails.logger.info(
+        "[UCF] No UCF changes for File##{file.id} in Place##{place.id}"
+      )
+    end
+    
+    # === Logging ===
+    Rails.logger.info(
+      "[UCF] Batch processing complete | " \
+      "file_id: #{file.id} | place_id: #{place.id} | " \
+      "adds: #{changes[:add].size} | removes: #{changes[:remove].size}"
+    )
   end
 
   def setup_batch_for_processing(project,thiskey,thisvalue)
