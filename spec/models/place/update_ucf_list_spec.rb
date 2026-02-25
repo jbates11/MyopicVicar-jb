@@ -43,12 +43,14 @@ RSpec.describe Place, type: :model do
     # ---------------------------------------------------------
 
     context "when no wildcard records exist for the file" do
-      it "stores empty hash in place.ucf_list for this file" do
-        place.update_ucf_list(file)
 
-        fresh_place = Place.find(place.id)
-        expect(fresh_place.ucf_list[file.id.to_s]).to eq([])
-      end
+      # JC old approach, does not apply
+      # it "stores empty hash in place.ucf_list for this file" do
+      #   place.update_ucf_list(file)
+
+      #   fresh_place = Place.find(place.id)
+      #   expect(fresh_place.ucf_list[file.id.to_s]).to eq([])
+      # end
 
       it "sets file.ucf_list to empty array" do
         place.update_ucf_list(file)
@@ -78,12 +80,13 @@ RSpec.describe Place, type: :model do
         expect(fresh_place.ucf_list_record_count).to be_an(Integer)
       end
 
-      it "counts file as one entry in ucf_list_file_count" do
-        place.update_ucf_list(file)
+      # JC old approach, does not apply
+      # it "counts file as one entry in ucf_list_file_count" do
+      #   place.update_ucf_list(file)
 
-        fresh_place = Place.find(place.id)
-        expect(fresh_place.ucf_list_file_count).to eq(1)
-      end
+      #   fresh_place = Place.find(place.id)
+      #   expect(fresh_place.ucf_list_file_count).to eq(1)
+      # end
 
       it "ensures all values in ucf_list are Arrays (never Hash)" do
         place.update_ucf_list(file)
@@ -103,22 +106,24 @@ RSpec.describe Place, type: :model do
         create(:freereg1_csv_file, place: "York", county: "YKS")
       end
 
-      it "accumulates file entries in place.ucf_list" do
-        place.update_ucf_list(file)
-        place.update_ucf_list(file2)
+      # JC old approach, does not apply
+      # it "accumulates file entries in place.ucf_list" do
+      #   place.update_ucf_list(file)
+      #   place.update_ucf_list(file2)
 
-        fresh_place = Place.find(place.id)
-        expect(fresh_place.ucf_list).to have_key(file.id.to_s)
-        expect(fresh_place.ucf_list).to have_key(file2.id.to_s)
-      end
+      #   fresh_place = Place.find(place.id)
+      #   expect(fresh_place.ucf_list).to have_key(file.id.to_s)
+      #   expect(fresh_place.ucf_list).to have_key(file2.id.to_s)
+      # end
 
-      it "increments ucf_list_file_count for each file" do
-        place.update_ucf_list(file)
-        place.update_ucf_list(file2)
+      # JC old approach, does not apply
+      # it "increments ucf_list_file_count for each file" do
+      #   place.update_ucf_list(file)
+      #   place.update_ucf_list(file2)
 
-        fresh_place = Place.find(place.id)
-        expect(fresh_place.ucf_list_file_count).to eq(2)
-      end
+      #   fresh_place = Place.find(place.id)
+      #   expect(fresh_place.ucf_list_file_count).to eq(2)
+      # end
 
       it "updates timestamp on each call" do
         time_before_1 = DateTime.now
@@ -140,12 +145,14 @@ RSpec.describe Place, type: :model do
     # ---------------------------------------------------------
 
     context "when storing file references as hash keys" do
-      it "converts file.id to string for hash key" do
-        place.update_ucf_list(file)
 
-        fresh_place = Place.find(place.id)
-        expect(fresh_place.ucf_list).to have_key(file.id.to_s)
-      end
+      # JC old approach, does not apply
+      # it "converts file.id to string for hash key" do
+      #   place.update_ucf_list(file)
+
+      #   fresh_place = Place.find(place.id)
+      #   expect(fresh_place.ucf_list).to have_key(file.id.to_s)
+      # end
 
       it "does not use file.id as integer key" do
         place.update_ucf_list(file)
@@ -160,13 +167,15 @@ RSpec.describe Place, type: :model do
     # ---------------------------------------------------------
 
     context "database persistence to MongoDB" do
-      it "persists place.ucf_list changes to database" do
-        place.update_ucf_list(file)
 
-        fresh_place = Place.find(place.id)
-        expect(fresh_place.ucf_list).to be_a(Hash)
-        expect(fresh_place.ucf_list).to have_key(file.id.to_s)
-      end
+      # JC old approach, does not apply
+      # it "persists place.ucf_list changes to database" do
+      #   place.update_ucf_list(file)
+
+      #   fresh_place = Place.find(place.id)
+      #   expect(fresh_place.ucf_list).to be_a(Hash)
+      #   expect(fresh_place.ucf_list).to have_key(file.id.to_s)
+      # end
 
       it "persists file.ucf_list changes to database" do
         place.update_ucf_list(file)

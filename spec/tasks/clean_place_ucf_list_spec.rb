@@ -58,29 +58,31 @@ RSpec.describe 'freereg:clean_ucf_place_list' do
       end
 
       it 'stores original ucf_list in old_ucf_list' do
+        place_id = place.id.to_s   # capture before task runs
+
         original_list = place.ucf_list.dup
         p "original_list: #{original_list}"
 
         rake_task.invoke
-        (place.class.find(place.id))
 
         # You must reload the place object from the database
-        place.reload 
+        fresh_place = Place.find(place_id)
 
-        p "ucf_list: #{place.ucf_list}"  
-        p "old_ucf_list: #{place.old_ucf_list}"  
+        p "ucf_list: #{fresh_place.ucf_list}"
+        p "old_ucf_list: #{fresh_place.old_ucf_list}"
 
-        expect(place.old_ucf_list).to eq(original_list)
+        expect(fresh_place.old_ucf_list).to eq(original_list)
       end
 
       it 'removes entries for files with mismatched county' do
+        place_id = place.id.to_s   # capture before task runs
+
         rake_task.invoke
-        (place.class.find(place.id))
 
         # You must reload the place object from the database
-        place.reload 
+        fresh_place = Place.find(place_id)
+        expect(fresh_place.ucf_list).not_to include(invalid_file.id.to_s)
 
-        expect(place.ucf_list).not_to include(invalid_file.id.to_s)
       end
     end
 
@@ -113,13 +115,14 @@ RSpec.describe 'freereg:clean_ucf_place_list' do
       end
 
       it 'removes all entries for missing files' do
+        place_id = place.id.to_s   # capture before task runs
+
         rake_task.invoke
-        (place.class.find(place.id))
 
         # You must reload the place object from the database
-        place.reload 
+        fresh_place = Place.find(place_id)
 
-        expect(place.ucf_list).to be_empty
+        expect(fresh_place.ucf_list).to be_empty
       end
     end
 
@@ -142,7 +145,7 @@ RSpec.describe 'freereg:clean_ucf_place_list' do
 
       it 'processes all places' do
         rake_task.invoke
-        
+
         (place1.class.find(place1.id))
         (place2.class.find(place2.id))
 
@@ -179,13 +182,14 @@ RSpec.describe 'freereg:clean_ucf_place_list' do
       end
 
       it 'removes entry when county does not match' do
+        place_id = place.id.to_s   # capture before task runs
+
         rake_task.invoke
-        (place.class.find(place.id))
 
         # You must reload the place object from the database
-        place.reload 
+        fresh_place = Place.find(place_id)
 
-        expect(place.ucf_list).to be_empty
+        expect(fresh_place.ucf_list).to be_empty
       end
     end
 
@@ -205,13 +209,13 @@ RSpec.describe 'freereg:clean_ucf_place_list' do
       end
 
       it 'removes entry when place does not match' do
+        place_id = place.id.to_s   # capture before task runs
         rake_task.invoke
-        (place.class.find(place.id))
 
         # You must reload the place object from the database
-        place.reload 
-        
-        expect(place.ucf_list).to be_empty
+        fresh_place = Place.find(place_id)
+
+        expect(fresh_place.ucf_list).to be_empty
       end
     end
   end
