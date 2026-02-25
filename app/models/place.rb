@@ -858,6 +858,127 @@ class Place
     )
   end
 
+  # # Apply batched UCF changes atomically to this Place
+  # # Prevents race conditions when multiple files are processed simultaneously
+  # # Changes are Sets of record IDs to add/remove from ucf_list[file_id_str]
+  # def apply_ucf_batch_changes(file_id_str, changes)
+  #   # === STEP 1: Validate inputs ===
+  #   unless file_id_str.present? && changes.present?
+  #     Rails.logger.warn("[UCF] Batch update aborted: invalid inputs")
+  #     return
+  #   end
+    
+  #   add_ids = changes[:add] || Set.new
+  #   remove_ids = changes[:remove] || Set.new
+    
+  #   # === STEP 2: Build MongoDB atomic update operations ===
+  #   # Use $addToSet for adding IDs (prevents duplicates automatically)
+  #   # Use $pull for removing IDs (supports array removal)
+  #   # Use $inc for updating counters
+    
+  #   update_operations = {}
+    
+  #   # Add new records to ucf_list[file_id_str]
+  #   if add_ids.any?
+  #     # $addToSet: MongoDB operator that adds values to array only if not already present
+  #     update_operations['$addToSet'] ||= {}
+  #     update_operations['$addToSet']["ucf_list.#{file_id_str}"] = { '$each' => add_ids.to_a }
+      
+  #     Rails.logger.debug(
+  #       "[UCF] Adding #{add_ids.size} records to Place##{id}"
+  #     )
+  #   end
+    
+  #   # Remove records from ucf_list[file_id_str]
+  #   if remove_ids.any?
+  #     # $pull: MongoDB operator that removes values from array
+  #     update_operations['$pull'] ||= {}
+  #     update_operations['$pull']["ucf_list.#{file_id_str}"] = { '$in' => remove_ids.to_a }
+      
+  #     Rails.logger.debug(
+  #       "[UCF] Removing #{remove_ids.size} records from Place##{id}"
+  #     )
+  #   end
+    
+  #   # Only proceed if there are operations to perform
+  #   unless update_operations.present?
+  #     Rails.logger.info("[UCF] No batch changes to apply for Place##{id}")
+  #     return
+  #   end
+    
+  #   # === STEP 3: Execute atomic update ===
+  #   begin
+  #     Place.collection.update_one(
+  #       { _id: id },
+  #       update_operations
+  #     )
+      
+  #     # === STEP 4: Reload and recalculate counters ===
+  #     # Counters must be accurate for UI/reporting
+  #     # Note: Could use $inc instead if exact counts tracked incrementally
+  #     reload
+  #     self.ucf_list_record_count = ucf_record_ids.size
+  #     self.ucf_list_file_count = ucf_list.keys.size
+  #     self.ucf_list_updated_at = Time.current
+  #     save
+      
+  #     Rails.logger.info(
+  #       "[UCF] Batch update successful | " \
+  #       "place_id: #{id} | file_id: #{file_id_str} | " \
+  #       "record_count: #{ucf_list_record_count} | " \
+  #       "file_count: #{ucf_list_file_count}"
+  #     )
+      
+  #   rescue StandardError => e
+  #     Rails.logger.error(
+  #       "[UCF] Batch update failed | " \
+  #       "place_id: #{id} | error: #{e.class} - #{e.message}"
+  #     )
+  #     raise e
+  #   end
+  # end
+
+  def apply_ucf_batch_changes(file_id_str, changes)
+    # === STEP 1: Validate inputs ===
+    return if file_id_str.blank? || changes.blank?
+
+    add_ids = changes[:add] || Set.new
+    remove_ids = changes[:remove] || Set.new
+    update_operations = {}
+
+    if add_ids.any?
+      update_operations['$addToSet'] = { "ucf_list.#{file_id_str}" => { '$each' => add_ids.to_a } }
+    end
+
+    if remove_ids.any?
+      update_operations['$pull'] = { "ucf_list.#{file_id_str}" => { '$in' => remove_ids.to_a } }
+    end
+
+    return if update_operations.empty?
+
+    # === STEP 2: Execute atomic update ===
+    begin
+      self.class.collection.update_one({ _id: id }, update_operations)
+      
+      # === STEP 3: Fetch fresh instance & update counters ===
+      # Using your constraint: Fetch fresh instead of .reload
+      fresh_place = self.class.find(id)
+      
+      # Perform counter updates on the fresh instance
+      fresh_place.update_attributes(
+        ucf_list_record_count: fresh_place.ucf_record_ids.size,
+        ucf_list_file_count:   fresh_place.ucf_list.keys.size,
+        ucf_list_updated_at:   Time.current
+      )
+
+      Rails.logger.info("[UCF] Batch update successful for Place##{id}")
+      
+    rescue StandardError => e
+      Rails.logger.error("[UCF] Batch update failed | place_id: #{id} | error: #{e.message}")
+      raise e
+    end
+  end
+
   def remove_ucf_record(file_id_str, record_id)
     ids = self.ucf_list[file_id_str]
     return unless ids&.delete(record_id)
