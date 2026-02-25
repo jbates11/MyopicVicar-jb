@@ -21,6 +21,13 @@ FactoryBot.define do
       # association :freereg1_csv_entry, factory: :freereg1_csv_entry
     end
 
+    # You can also add a trait for wildcards to make tests cleaner
+    trait :with_wildcard_name do
+      after(:create) do |record|
+        record.search_names.create!(first_name: "Jo*n", last_name: "Doe")
+      end
+    end
+
     trait :with_populated_search_names do
       after(:build) do |record|
         record.populate_search_names if record.transcript_names.present?
