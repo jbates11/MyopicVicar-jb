@@ -488,6 +488,44 @@ class Freereg1CsvEntry
     end
   end
 
+  # Determine if SearchRecord should be added/removed from Place UCF list
+  # This is used during batch processing to collect changes before atomic update
+  def compute_ucf_change(place, file, previous_file)
+    # === Guard Clause 1: Entry must have SearchRecord ===
+    unless search_record.present?
+      return { action: nil, id: nil, reason: 'no_search_record' }
+    end
+    
+    # === Guard Clause 2: SearchRecord must have wildcard UCF ===
+    unless search_record.contains_wildcard_ucf
+      return { action: nil, id: nil, reason: 'no_wildcard' }
+    end
+    
+    # === Guard Clause 3: SearchRecord must match Place location ===
+    unless search_record.place_id == place.id
+      return { action: nil, id: nil, reason: 'wrong_place' }
+    end
+    
+    # === Main Logic: Determine add vs remove action ===
+    file_id_str = file.id.to_s
+    
+    # Check if this SearchRecord is already in Place's UCF list for this file
+    already_listed = place.ucf_list[file_id_str]&.include?(search_record.id)
+    
+    if already_listed
+      # Record was already in list - no change needed
+      { action: nil, id: nil, reason: 'already_listed' }
+    else
+      # Record is new - should be ADDED to the list
+      { action: :add, id: search_record.id, reason: 'new_wildcard' }
+    end
+  rescue StandardError => e
+    Rails.logger.error(
+      "[UCF] compute_ucf_change failed | " \
+      "entry_id: #{id} | error: #{e.class} - #{e.message}"
+    )
+    { action: nil, id: nil, reason: 'error' }
+  end
 
   def create_baptism_string
     fields = FreeregOptionsConstants::ORIGINAL_BAPTISM_FIELDS + FreeregOptionsConstants::ADDITIONAL_BAPTISM_FIELDS + FreeregOptionsConstants::ORIGINAL_COMMON_FIELDS + FreeregOptionsConstants::ADDITIONAL_COMMON_FIELDS
