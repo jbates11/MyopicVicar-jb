@@ -1,22 +1,62 @@
 namespace :ucf do
 
-    # Task name: ucf:validate_ucf_lists
-    # Arguments:
-    #   limit       → how many Place records to check
-    #   fix         → whether to automatically fix issues ("fix")
-    #
-    # Detect and fix stale UCF lists
-    #   - detects orphaned file/record ID
-    #   - finds location mismatches
-    #   - can auto-fix issues
-    #
-    # Dry run
-    # rake ucf:validate_ucf_lists[1000]
-    #
-    # Fix issues
-    # rake ucf:validate_ucf_lists[0,fix]
-    #
-    # 
+  # ============================================================================
+  # Rake task to generate UCF statistics
+  # 
+  # ============================================================================
+  desc "Generate UCF statistics report"
+  task :ucf_statistics => :environment do
+
+    places = Place.where("ucf_list" => { "$exists" => true, "$ne" => {} })
+
+    stats = {
+      total_places_with_ucf: places.count,
+      total_ucf_records: 0,
+      total_ucf_files: 0,
+      largest_ucf_lists: []
+    }
+
+    places.no_timeout.batch_size(500).each do |place|
+      record_ids = Array(place.ucf_record_ids)
+      ucf_hash   = place.ucf_list.is_a?(Hash) ? place.ucf_list : {}
+
+      record_count = record_ids.size
+      file_count   = ucf_hash.keys.size
+
+      stats[:total_ucf_records] += record_count
+      stats[:total_ucf_files]   += file_count
+
+      stats[:largest_ucf_lists] << {
+        place: "#{place.chapman_code}/#{place.place_name}",
+        records: record_count,
+        files: file_count
+      }
+    end
+
+    stats[:largest_ucf_lists] =
+      stats[:largest_ucf_lists].sort_by { |p| [-p[:records], -p[:files]] }.take(20)
+
+    puts JSON.pretty_generate(stats)
+  end
+
+  # ============================================================================
+  # Task name: ucf:validate_ucf_lists
+  # Arguments:
+  #   limit       → how many Place records to check
+  #   fix         → whether to automatically fix issues ("fix")
+  #
+  # Detect and fix stale UCF lists
+  #   - detects orphaned file/record ID
+  #   - finds location mismatches
+  #   - can auto-fix issues
+  #
+  # Dry run
+  # rake ucf:validate_ucf_lists[1000]
+  #
+  # Fix issues
+  # rake ucf:validate_ucf_lists[0,fix]
+  #
+  # ============================================================================
 
   desc "Validate UCF lists for consistency"
   task :validate_ucf_lists, [:limit, :fix] => [:environment] do |t, args|
@@ -433,6 +473,5 @@ namespace :ucf do
 
     puts "[UCF:OPTIMIZED] Task complete.\n"
   end
-
 
 end
