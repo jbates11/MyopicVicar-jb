@@ -37,5 +37,29 @@ FactoryBot.define do
       end
     end
 
+    trait :with_ucf_data do
+      transient do
+        record_count { 5 }   # total records across all files
+        file_count   { 2 }   # number of files
+      end
+
+      after(:build) do |place, evaluator|
+        place.ucf_list = {}
+
+        # Distribute record_count across file_count files
+        counts = Array.new(evaluator.file_count, evaluator.record_count / evaluator.file_count)
+        remainder = evaluator.record_count % evaluator.file_count
+        remainder.times { |i| counts[i] += 1 }
+
+        evaluator.file_count.times do |i|
+          file_id = BSON::ObjectId.new
+          record_ids = Array.new(counts[i]) { BSON::ObjectId.new }
+
+          # MongoDB requires string keys
+          place.ucf_list[file_id.to_s] = record_ids
+        end
+      end
+    end
+
   end
 end
