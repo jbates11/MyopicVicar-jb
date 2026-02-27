@@ -1,3 +1,9 @@
+# UCF Schema Contract:
+# - ucf_list: Hash<String, Array<BSON::ObjectId>>
+# - keys must be strings (MongoDB restriction)
+# - values must be arrays
+# - record_ids must be BSON::ObjectId
+# 
 class Place
   include Mongoid::Document
 
@@ -667,6 +673,8 @@ class Place
   # end
   
   def ucf_record_ids
+    Rails.logger.warn("Place #{id} has malformed UCF data") unless ucf_list.is_a?(Hash)
+    return [] unless ucf_list.is_a?(Hash)
     # Returns all unique SearchRecord IDs across all files in ucf_list
     # .compact removes any nils to prevent crashes
     # .flatten(1) turns the nested arrays into one single array
