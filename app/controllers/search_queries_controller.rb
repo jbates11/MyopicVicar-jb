@@ -266,7 +266,8 @@ class SearchQueriesController < ApplicationController
 
       logger.warn("\n#{App.name_upcase}:[Show] SEARCH Record RESULTS START:")
 
-      Rails.logger.info "[Show] Search Record Results (@search_results) count: #{@search_results.count.ai}\n"
+      Rails.logger.info "[Show] Search Record Results (@search_results) count: #{@search_results.count}\n"
+      # Rails.logger.info "[Show] Search Record Results (@search_results) count: #{@search_results.count.ai}\n"
       # Rails.logger.info "[Show] Search Record Results (@search_results):\n#{@search_results.ai}\n"
 
       # logger.info ap @search_results
@@ -279,7 +280,8 @@ class SearchQueriesController < ApplicationController
       Rails.logger.fatal "[search_queries_controller#show] This is a fatal message"
       
       logger.warn("\n#{App.name_upcase}:[Show] UCF search record RESULTS_START:")
-      Rails.logger.info "[Show] Search Record Results (@search_results) count: #{@ucf_results.count.ai}\n"
+      Rails.logger.info "[Show] Search Record Results (@search_results) count: #{@ucf_results.count}\n"
+      # Rails.logger.info "[Show] Search Record Results (@search_results) count: #{@ucf_results.count.ai}\n"
       # Rails.logger.info "[Show] UCF Results (@ucf_results):\n#{@ucf_results.ai}\n"
 
       # logger.info ap @ucf_results

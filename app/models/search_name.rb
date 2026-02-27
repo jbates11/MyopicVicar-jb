@@ -34,7 +34,8 @@ class SearchName
 
     if result
       Rails.logger.info "\n***--- [contains_wildcard_ucf?] Wildcard UCF detected in SearchName _id: #{id}"
-      Rails.logger.info "[contains_wildcard_ucf?] SearchName details:\n#{self.ai}\n"
+      Rails.logger.info "[contains_wildcard_ucf?] SearchName details:\n#{self}\n"
+      # Rails.logger.info "[contains_wildcard_ucf?] SearchName details:\n#{self.ai}\n"
     else
       Rails.logger.info "\n--- [contains_wildcard_ucf?] No wildcard UCF detected in SearchName _id: #{id}\n"
     end

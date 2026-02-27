@@ -226,7 +226,8 @@ class SearchQuery
 
     def does_the_entry_exist?(search_record)
       Rails.logger.info  "\n[does_the_entry_exist?] Start does_the_entry_exist? method"
-      Rails.logger.info { "[does_the_entry_exist?] search_record(s):\n #{search_record.ai}" }
+      Rails.logger.info { "[does_the_entry_exist?] search_record(s):\n #{search_record}" }
+      # Rails.logger.info { "[does_the_entry_exist?] search_record(s):\n #{search_record.ai}" }
 
       app = App.name.downcase
       Rails.logger.info { "\n[does_the_entry_exist?] app=#{app.inspect}" }
@@ -250,7 +251,8 @@ class SearchQuery
       end
 
       actual_entry = Freereg1CsvEntry.find_by(_id: entry_id)
-      Rails.logger.info { "[does_the_entry_exist?] actual_entry (Freereg1CsvEntry):\n#{actual_entry.ai}" }
+      Rails.logger.info { "[does_the_entry_exist?] actual_entry (Freereg1CsvEntry):\n#{actual_entry}" }
+      # Rails.logger.info { "[does_the_entry_exist?] actual_entry (Freereg1CsvEntry):\n#{actual_entry.ai}" }
 
       if actual_entry.blank?
         Rails.logger.info "[does_the_entry_exist?] No Freereg1CsvEntry found -> returning false"
@@ -670,7 +672,8 @@ end
     # Step 4: Census additional fields (only for FreeCEN)
     if MyopicVicar::Application.config.template_set == 'freecen'
       search_results = filter_census_addional_fields(search_results)
-      Rails.logger.info { "[GetSortDisplay] ---Step 4: After filter_census_additional_fields (#{search_results.size})\n#{search_results.ai(index: true, plain: true)}" }
+      Rails.logger.info { "[GetSortDisplay] ---Step 4: After filter_census_additional_fields (#{search_results.size})\n#{search_results}" }
+      # Rails.logger.info { "[GetSortDisplay] ---Step 4: After filter_census_additional_fields (#{search_results.size})\n#{search_results.ai(index: true, plain: true)}" }
     end
 
     # Step 5: Count results safely
@@ -694,6 +697,7 @@ end
     return response, wrapped_results, ucf_results, result_count
   rescue => e
     Rails.logger.error { "[GetSortDisplay] ---Error in get_and_sort_results_for_display: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
+    # Rails.logger.error { "[GetSortDisplay] ---Error in get_and_sort_results_for_display: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
     return false
   end
 
@@ -922,11 +926,11 @@ end
         params['search_names'] = { '$elemMatch' => name_params }
       end
 
-      Rails.logger.info { "---[name_search_params] Final name search params:\n#{params.ai(sort_keys: true, plain: true)}" }
+      Rails.logger.info { "---[name_search_params] Final name search params:\n#{params.ai}" }
       params
 
     rescue => e
-      Rails.logger.error { "---[name_search_params] Error building name_search_params: #{e.message}\n#{e.backtrace.take(5).ai(plain: true)}" }
+      Rails.logger.error { "---[name_search_params] Error building name_search_params: #{e.message}\n#{e.backtrace.take(5).ai}" }
       {}
     end
   end
@@ -1038,7 +1042,8 @@ end
     if self.save
       Rails.logger.info { "[persist_results] Search results persisted successfully. Total: #{self.result_count}\n" }
     else
-      Rails.logger.error { "[persist_results] Failed to save SearchQuery with results:\n#{self.errors.full_messages.ai(plain: true)}" }
+      Rails.logger.error { "[persist_results] Failed to save SearchQuery with results:\n#{self.errors.full_messages.ai}" }
+      # Rails.logger.error { "[persist_results] Failed to save SearchQuery with results:\n#{self.errors.full_messages.ai(plain: true)}" }
     end
   end
 
@@ -1197,7 +1202,8 @@ end
     begin
       # Step 1: Gather search parameters
       @search_parameters = search_params
-      Rails.logger.info { "\n---[Search] Step 1-Search parameters:\n#{@search_parameters.ai(sort_keys: true, plain: true)}" }
+      Rails.logger.info { "\n---[Search] Step 1-Search parameters:\n#{@search_parameters}" }
+      # Rails.logger.info { "\n---[Search] Step 1-Search parameters:\n#{@search_parameters.ai(sort_keys: true, plain: true)}" }
 
       # Step 2: Determine index hint
       @search_index = SearchRecord.index_hint(@search_parameters)
@@ -1214,7 +1220,8 @@ end
                             # .max_time_ms(Rails.application.config.max_search_time)
                             # .limit(FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
 
-      Rails.logger.info { "---[Search] Step 4-Mongo::Collection::View (query statement) fetched:\n#{records.ai(index: true, plain: true)}\n" }
+      Rails.logger.info { "---[Search] Step 4-Mongo::Collection::View (query statement) fetched:\n#{records}\n" }
+      # Rails.logger.info { "---[Search] Step 4-Mongo::Collection::View (query statement) fetched:\n#{records.ai(index: true, plain: true)}\n" }
 
       # Step 5: Persist results
       Rails.logger.info { "---[Search] Step 5-Start cleaning raw search results (Persisted results): #{records.count.to_s} records." }
@@ -1233,7 +1240,8 @@ end
       # Step 7: UCF search if allowed (ie enable in mongo_config.yml, county and place selected)
       if can_query_ucf? && result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS
         records = search_ucf
-        Rails.logger.info { "---[Search] Step 7-UCF records fetched:#{records.ai(index: true, plain: true)}\n" }
+        Rails.logger.info { "---[Search] Step 7-UCF records fetched:#{records}\n" }
+        # Rails.logger.info { "---[Search] Step 7-UCF records fetched:#{records.ai(index: true, plain: true)}\n" }
       end
 
       # Step 8: Return final records
@@ -1279,26 +1287,31 @@ end
 
     # Step 1: Merge name filters
     name_params = name_search_params.presence || {}
-    Rails.logger.debug { "---[search_params] Name search params:\n#{name_params.ai(sort_keys: true, plain: true)}" }
+    Rails.logger.debug { "---[search_params] Name search params:\n#{name_params}" }
+    # Rails.logger.debug { "---[search_params] Name search params:\n#{name_params.ai(sort_keys: true, plain: true)}" }
     params.merge!(name_params)
 
     # Step 2: Merge place filters
     place_params = place_search_params.presence || {}
-    Rails.logger.debug { "---[search_params] Place search params:\n#{place_params.ai(sort_keys: true, plain: true)}" }
+    Rails.logger.debug { "---[search_params] Place search params:\n#{place_params}" }
+    # Rails.logger.debug { "---[search_params] Place search params:\n#{place_params.ai(sort_keys: true, plain: true)}" }
     params.merge!(place_params)
 
     # Step 3: Merge record type filters
     record_type_params_hash = record_type_params.presence || {}
-    Rails.logger.debug { "---[search_params] Record type params:\n#{record_type_params_hash.ai(sort_keys: true, plain: true)}" }
+    Rails.logger.debug { "---[search_params] Record type params:\n#{record_type_params_hash}" }
+    # Rails.logger.debug { "---[search_params] Record type params:\n#{record_type_params_hash.ai(sort_keys: true, plain: true)}" }
     params.merge!(record_type_params_hash)
 
     # Step 4: Merge date filters
     date_params = date_search_params.presence || {}
-    Rails.logger.debug { "---[search_params] Date search params:\n#{date_params.ai(sort_keys: true, plain: true)}" }
+    Rails.logger.debug { "---[search_params] Date search params:\n#{date_params}" }
+    # Rails.logger.debug { "---[search_params] Date search params:\n#{date_params.ai(sort_keys: true, plain: true)}" }
     params.merge!(date_params)
 
     # Final log: full merged params
-    Rails.logger.info { "---[search_params] Final merged search params:\n#{params.ai(sort_keys: true, plain: true)}" }
+    Rails.logger.info { "---[search_params] Final merged search params:\n#{params}" }
+    # Rails.logger.info { "---[search_params] Final merged search params:\n#{params.ai(sort_keys: true, plain: true)}" }
 
     params
   rescue => e
