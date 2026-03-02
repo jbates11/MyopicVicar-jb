@@ -331,6 +331,11 @@ class SearchQuery
     @search_results
   end
 
+  def exact_match_search?
+    # Exact match search: no wildcards in user's search term, no fuzzy matching
+    !query_contains_wildcard? && !fuzzy
+  end
+
   def can_query_ucf?
     Rails.application.config.ucf_support && self.places.exists? && !self.search_nearby_places# disable search until tested
   end
@@ -405,6 +410,11 @@ class SearchQuery
       params[:search_date] = date_params
     end
     params
+  end
+
+  def exact_match_search?
+    # Exact match search: no wildcards in user's search term, no fuzzy matching
+    !query_contains_wildcard? && !fuzzy
   end
 
   def explain_plan
@@ -511,47 +521,85 @@ class SearchQuery
       end
 
       begin
-        if name.contains_wildcard_ucf?
-          Rails.logger.info "[filter_ucf_records] Wildcard UCF detected for name"
-
+        # Apply conditional matching strategy to ALL names
+        # For exact match searches: use exact string comparison
+        # For wildcard/fuzzy searches: use regex pattern matching (converts UCF to regex)
+        
+        if exact_match_search?
+          # EXACT MATCH: Check if search term exactly equals record name
+          Rails.logger.info "[filter_ucf_records] Using EXACT string matching"
+          
           # CASE 1: Only last name provided
           if first_name.blank? && last_name.present? && name.last_name.present?
-            regex = UcfTransformer.ucf_to_regex(name.last_name.downcase)
-
-            Rails.logger.info "[filter_ucf_records] last_name_regex: #{regex}"
-            # ap(last_name_regex: regex)
-
-            if last_name.downcase.match(regex)
-              Rails.logger.info "[filter_ucf_records] Matched last name wildcard"
-              filtered_records << record
+            if last_name.downcase == name.last_name.downcase
+              Rails.logger.info "[filter_ucf_records] Matched last name (exact)"
+              filtered_records << record.id
             end
 
           # CASE 2: Only first name provided
           elsif last_name.blank? && first_name.present? && name.first_name.present?
-            regex = UcfTransformer.ucf_to_regex(name.first_name.downcase)
-
-            Rails.logger.info "[filter_ucf_records] first_name_regex: #{regex}"
-            # ap(first_name_regex: regex)
-            
-            if first_name.downcase.match(regex)
-              Rails.logger.info "[filter_ucf_records] Matched first name wildcard"
-              filtered_records << record
+            if first_name.downcase == name.first_name.downcase
+              Rails.logger.info "[filter_ucf_records] Matched first name (exact)"
+              filtered_records << record.id
             end
 
           # CASE 3: Both names provided
           elsif last_name.present? && first_name.present? &&
                 name.last_name.present? && name.first_name.present?
 
-            last_regex  = UcfTransformer.ucf_to_regex(name.last_name.downcase)
-            first_regex = UcfTransformer.ucf_to_regex(name.first_name.downcase)
+            if last_name.downcase == name.last_name.downcase &&
+               first_name.downcase == name.first_name.downcase
+              Rails.logger.info "[filter_ucf_records] Matched both first and last name (exact)"
+              filtered_records << record.id
+            end
+          end
 
-            Rails.logger.info "[filter_ucf_records] last_regex: #{last_regex} , first_regex: #{first_regex}"
-            # ap(last_regex: last_regex, first_regex: first_regex)
+        else
+          # WILDCARD/FUZZY SEARCH: Use regex pattern matching
+          # This handles both UCF wildcards in records AND wildcards in user's search
+          Rails.logger.info "[filter_ucf_records] Using REGEX matching for wildcard/fuzzy search"
 
-            if last_name.downcase.match(last_regex) &&
-               first_name.downcase.match(first_regex)
-              Rails.logger.info "[filter_ucf_records] Matched both first and last name wildcards"
-              filtered_records << record
+          # CASE 1: Only last name provided
+          if first_name.blank? && last_name.present? && name.last_name.present?
+            # Convert search term to regex (handles user's wildcards and UCF wildcards)
+            search_regex = UcfTransformer.ucf_to_regex(last_name.downcase)
+            record_regex = UcfTransformer.ucf_to_regex(name.last_name.downcase)
+
+            Rails.logger.info "[filter_ucf_records] Search regex: #{search_regex}, Record regex: #{record_regex}"
+
+            # Match if either: search pattern matches record name, OR record pattern matches search name
+            if last_name.downcase.match(record_regex) || name.last_name.downcase.match(search_regex)
+              Rails.logger.info "[filter_ucf_records] Matched last name (wildcard/fuzzy)"
+              filtered_records << record.id
+            end
+
+          # CASE 2: Only first name provided
+          elsif last_name.blank? && first_name.present? && name.first_name.present?
+            search_regex = UcfTransformer.ucf_to_regex(first_name.downcase)
+            record_regex = UcfTransformer.ucf_to_regex(name.first_name.downcase)
+
+            Rails.logger.info "[filter_ucf_records] Search regex: #{search_regex}, Record regex: #{record_regex}"
+            
+            if first_name.downcase.match(record_regex) || name.first_name.downcase.match(search_regex)
+              Rails.logger.info "[filter_ucf_records] Matched first name (wildcard/fuzzy)"
+              filtered_records << record.id
+            end
+
+          # CASE 3: Both names provided
+          elsif last_name.present? && first_name.present? &&
+                name.last_name.present? && name.first_name.present?
+
+            last_search_regex  = UcfTransformer.ucf_to_regex(last_name.downcase)
+            first_search_regex = UcfTransformer.ucf_to_regex(first_name.downcase)
+            last_record_regex  = UcfTransformer.ucf_to_regex(name.last_name.downcase)
+            first_record_regex = UcfTransformer.ucf_to_regex(name.first_name.downcase)
+
+            Rails.logger.info "[filter_ucf_records] Last search/record regex: #{last_search_regex}/#{last_record_regex}, First search/record regex: #{first_search_regex}/#{first_record_regex}"
+
+            if (last_name.downcase.match(last_record_regex) || name.last_name.downcase.match(last_search_regex)) &&
+               (first_name.downcase.match(first_record_regex) || name.first_name.downcase.match(first_search_regex))
+              Rails.logger.info "[filter_ucf_records] Matched both first and last name (wildcard/fuzzy)"
+              filtered_records << record.id
             end
           end
         end
