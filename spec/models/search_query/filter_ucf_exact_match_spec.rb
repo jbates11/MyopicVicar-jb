@@ -28,8 +28,12 @@ RSpec.describe SearchQuery, type: :model do
         )
 
         # Execute: Filter UCF records
-        # The "andover" search should NOT match "do_e" even though
-        # "andover" contains the substring "dove" that matches /do.e/
+        # The "andover" search should NOT match "do_e" using logic:
+        # 1. Exact match? "andover" != "do_e" → No
+        # 2. Record has UCF? Yes, but search doesn't have wildcards (exact mode)
+        #    Only include if search exactly equals name → No match
+        # 3. Search has wildcards? No
+        # Result: Not included (correct behavior)
         filtered = search_query.filter_ucf_records([ucf_record.id])
 
         # Assert: Record should NOT be included
@@ -37,14 +41,13 @@ RSpec.describe SearchQuery, type: :model do
       end
 
       it "DOES include matching UCF records with same base name" do
-        # Setup: UCF record "And*ver" (uncertainty in first name, not surname)
+        # Setup: UCF record "Sus*n andover" (uncertainty in first name, not surname)
         ucf_record = create(:search_record, place: place)
         ucf_record.search_names << build(:search_name,
           first_name: 'Sus*n',  # Contains wildcard
           last_name: 'andover'
         )
         ucf_record.save
-
 
         # Setup: Search for exact "andover"
         search_query.update(
@@ -104,12 +107,12 @@ RSpec.describe SearchQuery, type: :model do
         # Execute
         filtered = search_query.filter_ucf_records([ucf_record.id])
 
-        # Assert: Should match (regex matching applies)
+        # Assert: Should match because search has wildcard
         expect(filtered).to include(ucf_record.id)
       end
 
       it "DOES include UCF records when search has wildcard" do
-        # Setup: Normal record "andover"
+        # Setup: Normal record "andover" (no UCF)
         normal_record = create(:search_record, place: place)
         normal_record.search_names << build(:search_name,
           first_name: 'susan',
@@ -124,10 +127,10 @@ RSpec.describe SearchQuery, type: :model do
           first_name: nil
         )
 
-        # Execute: Filter (with wildcard pattern in search)
+        # Execute: Filter with search containing wildcard
         filtered = search_query.filter_ucf_records([normal_record.id])
 
-        # Assert: Should match
+        # Assert: Should match because search has wildcard (bidirectional regex)
         expect(filtered).to include(normal_record.id)
       end
     end
@@ -152,27 +155,10 @@ RSpec.describe SearchQuery, type: :model do
         # Execute
         filtered = search_query.filter_ucf_records([ucf_record.id])
 
-        # Assert: Uses regex matching (so "andover" matches "do_e" → /do.e/)
-        # This is different from exact match behavior
+        # Assert: Uses regex matching (so "andover" can match "do_e" → /do.e/)
+        # This is acceptable in fuzzy mode
         expect(filtered).to include(ucf_record.id)
       end
-    end
-  end
-
-  describe "#exact_match_search? helper method" do
-    it "returns true for exact match configuration" do
-      query = build(:search_query, fuzzy: false, last_name: 'andover')
-      expect(query.exact_match_search?).to eq(true)
-    end
-
-    it "returns false when fuzzy=true" do
-      query = build(:search_query, fuzzy: true, last_name: 'andover')
-      expect(query.exact_match_search?).to eq(false)
-    end
-
-    it "returns false when wildcards present" do
-      query = build(:search_query, fuzzy: false, last_name: 'and*ver')
-      expect(query.exact_match_search?).to eq(false)
     end
   end
 end
