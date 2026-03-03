@@ -459,114 +459,114 @@ class SearchQuery
   # end
 
   def filter_ucf_records(records)
-  Rails.logger.info "\n[filter_ucf_records] starting with #{records.size} raw records"
-  Rails.logger.info "[filter_ucf_records] Start loop of search records\n"
-  # ap(records: records)
+    Rails.logger.info "\n[filter_ucf_records] starting with #{records.size} raw records"
+    Rails.logger.info "[filter_ucf_records] Start loop of search records\n"
+    # ap(records: records)
 
-  filtered_records = []
+    filtered_records = []
 
-  records.each do |raw_record|
-    Rails.logger.info "[filter_ucf_records] Processing raw search record: #{raw_record.inspect}"
+    records.each do |raw_record|
+      Rails.logger.info "[filter_ucf_records] Processing raw search record: #{raw_record.inspect}"
 
-    record = SearchRecord.record_id(raw_record.to_s).first
-    Rails.logger.info "[filter_ucf_records] Search Record:\n#{record.inspect}"
-    # Rails.logger.info "[filter_ucf_records] Search Record load:\n#{record.ai}"
-    # ap(record_loaded: record)
+      record = SearchRecord.record_id(raw_record.to_s).first
+      Rails.logger.info "[filter_ucf_records] Search Record:\n#{record.inspect}"
+      # Rails.logger.info "[filter_ucf_records] Search Record load:\n#{record.ai}"
+      # ap(record_loaded: record)
 
-    next if record.blank?
+      next if record.blank?
 
-    if record.search_date.blank?
-      Rails.logger.info "[filter_ucf_records] Skipping search record: blank search_date"
-      next
-    end
-
-    if record.search_date.match(UCF) && !record.search_date.match(VALID_YEAR)
-      Rails.logger.info "[filter_ucf_records] Skipping search record: search_date matches UCF"
-      next
-    end
-
-    if record_type.present? && record.record_type != record_type
-      Rails.logger.info "[filter_ucf_records] Skipping search record: record_type mismatch"
-      next
-    end
-
-    if start_year.present?
-      year = record.search_date.to_i
-      if year < start_year || year > end_year
-        Rails.logger.info "[filter_ucf_records] Skipping search record: year #{year} outside #{start_year}-#{end_year}"
-        next
-      end
-    end
-
-    Rails.logger.info "\n[filter_ucf_records] Start loop of search name(s)"
-    record.search_names.each do |name|
-      Rails.logger.info "\n+++ [filter_ucf_records] Evaluating search name: #{name.attributes}"
-      # ap(name: name)
-
-      unless name.type == SearchRecord::PersonType::PRIMARY || inclusive || witness
-        Rails.logger.info "[filter_ucf_records] Skipping name: not PRIMARY and no inclusive/witness flags\n"
+      if record.search_date.blank?
+        Rails.logger.info "[filter_ucf_records] Skipping search record: blank search_date"
         next
       end
 
-      begin
-        if name.contains_wildcard_ucf?
-          Rails.logger.info "[filter_ucf_records] Wildcard UCF detected for name"
+      if record.search_date.match(UCF) && !record.search_date.match(VALID_YEAR)
+        Rails.logger.info "[filter_ucf_records] Skipping search record: search_date matches UCF"
+        next
+      end
 
-          # CASE 1: Only last name provided
-          if first_name.blank? && last_name.present? && name.last_name.present?
-            regex = UcfTransformer.ucf_to_regex(name.last_name.downcase)
+      if record_type.present? && record.record_type != record_type
+        Rails.logger.info "[filter_ucf_records] Skipping search record: record_type mismatch"
+        next
+      end
 
-            Rails.logger.info "[filter_ucf_records] last_name_regex: #{regex}"
-            # ap(last_name_regex: regex)
+      if start_year.present?
+        year = record.search_date.to_i
+        if year < start_year || year > end_year
+          Rails.logger.info "[filter_ucf_records] Skipping search record: year #{year} outside #{start_year}-#{end_year}"
+          next
+        end
+      end
 
-            if last_name.downcase.match(regex)
-              Rails.logger.info "[filter_ucf_records] Matched last name wildcard"
-              filtered_records << record
-            end
+      Rails.logger.info "\n[filter_ucf_records] Start loop of search name(s)"
+      record.search_names.each do |name|
+        Rails.logger.info "\n+++ [filter_ucf_records] Evaluating search name: #{name.attributes}"
+        # ap(name: name)
 
-          # CASE 2: Only first name provided
-          elsif last_name.blank? && first_name.present? && name.first_name.present?
-            regex = UcfTransformer.ucf_to_regex(name.first_name.downcase)
+        unless name.type == SearchRecord::PersonType::PRIMARY || inclusive || witness
+          Rails.logger.info "[filter_ucf_records] Skipping name: not PRIMARY and no inclusive/witness flags\n"
+          next
+        end
 
-            Rails.logger.info "[filter_ucf_records] first_name_regex: #{regex}"
-            # ap(first_name_regex: regex)
-            
-            if first_name.downcase.match(regex)
-              Rails.logger.info "[filter_ucf_records] Matched first name wildcard"
-              filtered_records << record
-            end
+        begin
+          if name.contains_wildcard_ucf?
+            Rails.logger.info "[filter_ucf_records] Wildcard UCF detected for name"
 
-          # CASE 3: Both names provided
-          elsif last_name.present? && first_name.present? &&
-                name.last_name.present? && name.first_name.present?
+            # CASE 1: Only last name provided
+            if first_name.blank? && last_name.present? && name.last_name.present?
+              regex = UcfTransformer.ucf_to_regex(name.last_name.downcase)
 
-            last_regex  = UcfTransformer.ucf_to_regex(name.last_name.downcase)
-            first_regex = UcfTransformer.ucf_to_regex(name.first_name.downcase)
+              Rails.logger.info "[filter_ucf_records] last_name_regex: #{regex}"
+              # ap(last_name_regex: regex)
 
-            Rails.logger.info "[filter_ucf_records] last_regex: #{last_regex} , first_regex: #{first_regex}"
-            # ap(last_regex: last_regex, first_regex: first_regex)
+              if last_name.downcase.match(regex)
+                Rails.logger.info "[filter_ucf_records] Matched last name wildcard"
+                filtered_records << record
+              end
 
-            if last_name.downcase.match(last_regex) &&
-               first_name.downcase.match(first_regex)
-              Rails.logger.info "[filter_ucf_records] Matched both first and last name wildcards"
-              filtered_records << record
+            # CASE 2: Only first name provided
+            elsif last_name.blank? && first_name.present? && name.first_name.present?
+              regex = UcfTransformer.ucf_to_regex(name.first_name.downcase)
+
+              Rails.logger.info "[filter_ucf_records] first_name_regex: #{regex}"
+              # ap(first_name_regex: regex)
+              
+              if first_name.downcase.match(regex)
+                Rails.logger.info "[filter_ucf_records] Matched first name wildcard"
+                filtered_records << record
+              end
+
+            # CASE 3: Both names provided
+            elsif last_name.present? && first_name.present? &&
+                  name.last_name.present? && name.first_name.present?
+
+              last_regex  = UcfTransformer.ucf_to_regex(name.last_name.downcase)
+              first_regex = UcfTransformer.ucf_to_regex(name.first_name.downcase)
+
+              Rails.logger.info "[filter_ucf_records] last_regex: #{last_regex} , first_regex: #{first_regex}"
+              # ap(last_regex: last_regex, first_regex: first_regex)
+
+              if last_name.downcase.match(last_regex) &&
+                first_name.downcase.match(first_regex)
+                Rails.logger.info "[filter_ucf_records] Matched both first and last name wildcards"
+                filtered_records << record
+              end
             end
           end
+        rescue RegexpError => e
+          Rails.logger.error "[filter_ucf_records] RegexpError for name #{name.inspect}: #{e.message}"
         end
-      rescue RegexpError => e
-        Rails.logger.error "[filter_ucf_records] RegexpError for name #{name.inspect}: #{e.message}"
       end
+      Rails.logger.info "[filter_ucf_records] End loop of search names\n"
     end
-    Rails.logger.info "[filter_ucf_records] End loop of search names\n"
+    Rails.logger.info "[filter_ucf_records] End loop of search records\n"
+
+    Rails.logger.info "[filter_ucf_records] filter_ucf_records: returning #{filtered_records.size} filtered records\n"
+    # Rails.logger.info "\n[filter_ucf_records] filtered records:\n#{filtered_records.ai}\n"
+    # ap(filtered_records: filtered_records)
+
+    filtered_records
   end
-  Rails.logger.info "[filter_ucf_records] End loop of search records\n"
-
-  Rails.logger.info "[filter_ucf_records] filter_ucf_records: returning #{filtered_records.size} filtered records\n"
-  # Rails.logger.info "\n[filter_ucf_records] filtered records:\n#{filtered_records.ai}\n"
-  # ap(filtered_records: filtered_records)
-
-  filtered_records
-end
 
   def filter_census_addional_fields(search_results)
     filtered_records = []
