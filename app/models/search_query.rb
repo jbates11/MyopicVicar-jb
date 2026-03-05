@@ -441,10 +441,10 @@ class SearchQuery
   #           if name.contains_wildcard_ucf?
   #             if first_name.blank? && last_name.present? && name.last_name.present?
   #               filtered_records << record if last_name.downcase.match(UcfTransformer.ucf_to_regex(name.last_name.downcase))
-              
+
   #             elsif last_name.blank? && first_name.present? && name.first_name.present?
   #               filtered_records << record if first_name.downcase.match(UcfTransformer.ucf_to_regex(name.first_name.downcase))
-              
+
   #             elsif last_name.present? && first_name.present? && name.last_name.present? && name.first_name.present?
   #               filtered_records << record if last_name.downcase.match(UcfTransformer.ucf_to_regex(name.last_name.downcase)) &&
   #                 first_name.downcase.match(UcfTransformer.ucf_to_regex(name.first_name.downcase))
@@ -519,7 +519,7 @@ class SearchQuery
               Rails.logger.info "[filter_ucf_records] last_name_regex: #{regex}"
               # ap(last_name_regex: regex)
 
-              if last_name.downcase.match(regex)
+              if regex.match(last_name.downcase)
                 Rails.logger.info "[filter_ucf_records] Matched last name wildcard"
                 filtered_records << record
               end
@@ -530,8 +530,8 @@ class SearchQuery
 
               Rails.logger.info "[filter_ucf_records] first_name_regex: #{regex}"
               # ap(first_name_regex: regex)
-              
-              if first_name.downcase.match(regex)
+
+              if regex.match(first_name.downcase)
                 Rails.logger.info "[filter_ucf_records] Matched first name wildcard"
                 filtered_records << record
               end
@@ -546,8 +546,8 @@ class SearchQuery
               Rails.logger.info "[filter_ucf_records] last_regex: #{last_regex} , first_regex: #{first_regex}"
               # ap(last_regex: last_regex, first_regex: first_regex)
 
-              if last_name.downcase.match(last_regex) &&
-                first_name.downcase.match(first_regex)
+              if last_regex.match(last_name.downcase) &&
+                first_regex.match(first_name.downcase)
                 Rails.logger.info "[filter_ucf_records] Matched both first and last name wildcards"
                 filtered_records << record
               end
@@ -613,8 +613,8 @@ class SearchQuery
     filtered_records
   end
 
-  
-  # This method takes raw search results, runs them through several filters, 
+
+  # This method takes raw search results, runs them through several filters,
   # sorts them, wraps them as Mongoid models, and returns a structured response
   # def get_and_sort_results_for_display
   #   # test if raw search_result is a hash
@@ -688,6 +688,11 @@ class SearchQuery
     # Step 8: Wrap results in SearchRecord objects
     wrapped_results = search_results.map { |h| SearchRecord.new(h) }
     # Rails.logger.info { "[GetSortDisplay] ---Step 8: Wrapped results into SearchRecord objects\n#{wrapped_results.ai(index: true, plain: true)}" }
+
+    # Step 8.5: Deduplicate — remove UCF results that are already in normal results
+    search_result_ids = wrapped_results.map(&:id).to_set
+    ucf_results = ucf_results.reject { |record| search_result_ids.include?(record.id) }
+    # Rails.logger.info { "[GetSortDisplay] ---Step 8.5: After deduplication (#{ucf_results.size})\n#{ucf_results.ai(index: true, plain: true)}" }
 
     # Final return
     response = true
@@ -930,7 +935,7 @@ class SearchQuery
       {}
     end
   end
-  
+
 
   def next_and_previous_records(current)
     if search_result.records.respond_to?(:values)
@@ -976,7 +981,7 @@ class SearchQuery
         search_record.delete if search_record.present?
       end
     end
-    
+
     self.search_result.records = self.search_result.records.merge(records)
     self.result_count = self.search_result.records.length
     self.runtime_additional = (Time.now.utc - self.updated_at) * 1000
@@ -1178,14 +1183,14 @@ class SearchQuery
   # def search
   #   @search_parameters = search_params
   #   @search_index = SearchRecord.index_hint(@search_parameters)
-    
+
   #   logger.warn("#{App.name_upcase}:SEARCH_HINT: #{@search_index}")
   #   logger.warn("#{App.name_upcase}:SEARCH_PARAMETERS: #{@search_parameters}")
 
   #   update_attribute(:search_index, @search_index)
-    
+
   #   records = SearchRecord.collection.find(@search_parameters).hint(@search_index.to_s).max_time_ms(Rails.application.config.max_search_time).limit(FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
-    
+
   #   persist_results(records)
   #   persist_additional_results(secondary_date_results) if App.name == 'FreeREG' && (result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS)
 
@@ -1221,11 +1226,11 @@ class SearchQuery
 
       persist_results(records)
       Rails.logger.info { "---[Search] Step 5a-Save (Persisted results): #{records.count.to_s} records." }
-      
+
       # Step 6: Add secondary results (FreeREG only)
       if App.name == 'FreeREG' && result_count < FreeregOptionsConstants::MAXIMUM_NUMBER_OF_RESULTS
         Rails.logger.info { "---[Search] Step 6-Start cleaning additional raw search results (Additional Persisted results): #{records.count.to_s} records." }
-        
+
         persist_additional_results(secondary_date_results)
         Rails.logger.info { "---[Search] Step 6a-Save additional secondary date: results #{records.count} records." }
       end
@@ -1310,14 +1315,14 @@ class SearchQuery
   #   start_ucf_time = Time.now.utc
   #   ucf_records = Place.extract_ucf_records(place_ids)
   #   ucf_records = filter_ucf_records(ucf_records)
-    
+
   #   if ucf_records.present?
   #     ucf_filtered_count = ucf_records.length
   #     search_result.ucf_records = ucf_records.map { |sr| sr.id }
   #   else
   #     ucf_filtered_count = 0
   #   end
-    
+
   #   self.ucf_filtered_count = ucf_filtered_count
   #   runtime_ucf = (Time.now.utc - start_ucf_time) * 1000
   #   self.runtime_ucf = runtime_ucf
@@ -1364,7 +1369,7 @@ class SearchQuery
 
     log_ucf(:info, "UCF search complete")
     true
-  end  
+  end
 
   def sort_results(results)
     # next reorder in memory
@@ -1430,7 +1435,7 @@ class SearchQuery
   # end
 
   def ucf_results
-    if self.can_query_ucf?      
+    if self.can_query_ucf?
       ids = self.search_result.ucf_records
       Rails.logger.debug { "---UCF record IDs: #{ids.ai(plain: true)}" }
 
