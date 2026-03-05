@@ -16,8 +16,11 @@ RSpec.describe UcfTransformer do
       let(:input) { "Dr.J" }
 
       it "escapes dots so they match literal periods" do
-        expect(regex).to eq(/Dr\.J/)
-        expect("Dr.John").to match(regex)
+        expect(regex).to eq(/^Dr\.J$/)
+        # Exact 4-character match: D-r-.-J
+        expect("Dr.J").to match(regex)
+        # Longer string should NOT match (ensures exact name matching)
+        expect("Dr.John").not_to match(regex)
       end
     end
 
