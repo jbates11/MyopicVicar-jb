@@ -15,6 +15,8 @@ FactoryBot.define do
     ucf_updated { nil }
     userid_lower_case { userid.downcase }
     sequence(:userid) { |n| "volunteer_#{n}" }
+    datemin { "1800" }
+    datemax { "1900" }
 
     association :register, factory: :register
 

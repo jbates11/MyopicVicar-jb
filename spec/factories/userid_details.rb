@@ -5,7 +5,7 @@ FactoryBot.define do
     sequence(:email_address) { |n| "user#{n}@example.com" }
     password { 'password1234' }
     password_confirmation { 'password1234' }
-    syndicate { 'Oxfordshire - Eric Booker' }
+    syndicate { 'SyndicateA' }
     person_role { 'transcriber' }
     sequence(:person_forename) { |n| "forename#{n}" }
     sequence(:person_surname) { |n| "surname#{n}" }
@@ -17,5 +17,7 @@ FactoryBot.define do
     # email_address_last_confirmned { '2025-09-25 19:28:59' }
     # optional
     email_address_valid { true }
+    county_groups { ["DEV"] }
+    no_processing_messages { false }
   end
 end
