@@ -33,7 +33,7 @@ gem 'bourbon'
 gem 'mail-logger'
 gem 'devise'
 gem 'devise-encryptable'
-gem 'nokogiri', ">= 1.13.6"
+# gem 'nokogiri', ">= 1.13.6"
 gem 'osgb', git: 'https://github.com/FreeUKGen/osgb.git'
 gem 'rubyzip'
 gem 'zip-zip'
@@ -50,5 +50,53 @@ gem 'jquery-rails'
 gem 'font_awesome5_rails'
 gem 'refinerycms-county_pages', :path => 'vendor/extensions'
 gem 'rubocop-rails'
-gem 'rubocop', '~> 1.23.0', require: false
+# gem 'rubocop', '~> 1.23.0', require: false
 gem 'browser'
+
+# JC additions
+gem "puma"
+# gem dependencies for rails 5.1.7 compatibility
+gem 'nokogiri', '~> 1.15.0'
+gem 'psych', '~> 3.3.0'
+
+group :development, :test do
+  gem 'letter_opener'
+
+  gem 'erb-formatter'
+  gem 'erb_lint'
+  
+  # v1.11.x compatibility issue with rspec mocks and ruby 2.7.8
+  gem 'debug', '< 1.5.0' # works with ruby 2.7.8 and rails 5.1
+  gem 'irb', '~> 1.3.0' # works with ruby 2.7.8 and rails 5.1
+  gem 'reline', '~> 0.2.0' # works with ruby 2.7.8 and rails 5.1
+
+  gem 'rubocop-capybara'
+  gem 'rubocop-performance'
+  gem 'rubocop-rspec'
+  gem 'solargraph'
+  gem 'awesome_print'
+  # gem "rubocop-rails"  # already in gem
+
+
+ # add for rspec tests - Do NOT add until rspec setup
+  gem 'mongoid-rspec'
+  gem 'factory_bot_rails'
+  gem 'faker', require: false   # for sample data in development
+  gem 'database_cleaner-mongoid'
+
+end
+
+group :development do
+  gem 'web-console'  
+  gem 'xray-rails'  # reveal overlay templates, ctrl+shift+x 
+  gem 'rufo' # alternate ruby formatter - use by rubocop revisited???
+end  
+
+group :test do
+  gem 'capybara'  # Do NOT add until rspec setup
+  # gem 'capybara', `~> 3.7.0`
+  # gem 'selenium-webdriver', `~> 3.14.0`
+
+  # gem `vcr`
+  # gem `webmock`
+end
