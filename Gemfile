@@ -97,6 +97,7 @@ group :test do
   # gem 'capybara', `~> 3.7.0`
   # gem 'selenium-webdriver', `~> 3.14.0`
 
+  gem 'database_cleaner-active_record'  # Provides transaction strategy for MySQL cleanup
   # gem `vcr`
   # gem `webmock`
 end
