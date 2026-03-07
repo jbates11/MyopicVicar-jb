@@ -41,16 +41,16 @@ MyopicVicar::Application.configure do
   config.serve_static_files = true
 
   # Turning Source Maps On, disables concatenation and preprocessing of assets
-  # config.assets.debug = true    # for assets pipeline debugging
-  config.assets.debug = false
+  config.assets.debug = true    # for assets pipeline debugging
+  # config.assets.debug = false
 
   # Enable live sprockets assets pipeline compilation
-  # config.assets.compile = true    # for assets pipeline debugging
-  config.assets.compile = false
+  config.assets.compile = true    # for assets pipeline debugging
+  # config.assets.compile = false
 
   # Turning Digests (fingerprinting) On
-  # config.assets.digest = false    # for assets pipeline debugging
-  config.assets.digest = true
+  config.assets.digest = false    # for assets pipeline debugging
+  # config.assets.digest = true
 
   # Enables additional runtime error checking.
   # Minimize unexpected behaviour when deploying to `production`
@@ -115,4 +115,7 @@ MyopicVicar::Application.configure do
   config.register_embargo_list = MyopicVicar::MongoConfig['register_embargo_list']
   config.freecen2_place_cache = MyopicVicar::MongoConfig['freecen2_place_cache']
 
+  config.action_mailer.delivery_method = :letter_opener
+  config.action_mailer.perform_deliveries = true
+  config.web_console.whitelisted_ips = %w( 0.0.0.0/0 ::/0 )
 end
