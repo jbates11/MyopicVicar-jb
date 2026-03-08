@@ -77,7 +77,7 @@ class NewFreeregCsvUpdateProcessor
       p "Locking file: #{@rake_lock_file}"
       @locking_file.flock(File::LOCK_EX)
       self.activate_project(create_search_records, type, force, range)
-      sleep(300)
+      # sleep(300)
     end
     p "Removing lock on #{@rake_lock_file}" 
     @locking_file.flock(File::LOCK_UN)
