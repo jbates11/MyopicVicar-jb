@@ -1,0 +1,365 @@
+---
+config:
+  look: handDrawn
+  theme: default
+---
+# Mermaid Diagrams: Bride/Groom Reindex Process
+
+## Diagram 1: Data Flow (CSV to SearchRecord)
+
+```mermaid
+graph TD
+    A["CSV File<br/>(St_Mary_1700.csv)"] -->|"Parse"| B["Freereg1CsvEntry<br/>(MongoDB document)<br/>groom_forename: John<br/>bride_forename: Jane"]
+    
+    B -->|"Freereg1Translator.translate()<br/>with NEW code"| C["Attributes Hash<br/>transcript_names: [<br/>&nbsp;&nbsp;{role: g, ...},<br/>&nbsp;&nbsp;{role: b, ...}<br/>]"]
+    
+    C -->|"SearchRecord.update_create_search_record()"| D["SearchRecord<br/>(MongoDB document)"]
+    
+    D -->|"Step 1-7 Transform"| E["Transformed SearchRecord<br/>transcript_names: [...]<br/>search_names: [...]<br/>search_soundex: [...]"]
+    
+    E -->|"Save"| F["MongoDB Database<br/>(Searchable Index Ready)"]
+    
+    F -->|"User queries"| G["Search Results<br/>(Displays transcript_names<br/>with groom first)"]
+    
+    style A fill:#e1f5ff
+    style B fill:#b3e5fc
+    style C fill:#81d4fa
+    style D fill:#4fc3f7
+    style E fill:#29b6f6
+    style F fill:#03a9f4
+    style G fill:#039be5
+```
+
+---
+
+## Diagram 2: Reindex Lifecycle (Old vs. New Order)
+
+```mermaid
+graph TD
+    subgraph BEFORE["BEFORE Reindex (Inconsistent)"]
+        A["Old SearchRecord<br/>(Created with old translator)<br/>transcript_names: [<br/>&nbsp;&nbsp;{role: b, ...},<br/>&nbsp;&nbsp;{role: g, ...}<br/>]<br/>❌ Bride FIRST"]
+        
+        B["New SearchRecord<br/>(Created after code deploy)<br/>transcript_names: [<br/>&nbsp;&nbsp;{role: g, ...},<br/>&nbsp;&nbsp;{role: b, ...}<br/>]<br/>✓ Groom FIRST"]
+    end
+    
+    subgraph TRIGGER["Reindex Trigger"]
+        C["Rake Task:<br/>reprocess_batches_for_a_county[YKS]<br/>OR code change deployed"]
+    end
+    
+    subgraph DURING["DURING Reindex (Process)"]
+        D["Iterate Freereg1CsvEntry<br/>(source of truth)"]
+        E["Freereg1Translator.translate()<br/>with NEW code"]
+        F["SearchRecord.transform()"]
+        G["Save to MongoDB"]
+    end
+    
+    subgraph AFTER["AFTER Reindex (Consistent)"]
+        H["All SearchRecords<br/>transcript_names: [<br/>&nbsp;&nbsp;{role: g, ...},<br/>&nbsp;&nbsp;{role: b, ...}<br/>]<br/>✓ ALL Groom FIRST"]
+    end
+    
+    BEFORE -->|"Initiate"| TRIGGER
+    TRIGGER -->|"Start"| DURING
+    DURING --> D
+    D --> E
+    E --> F
+    F --> G
+    DURING -->|"Complete"| AFTER
+    
+    style A fill:#ffcdd2
+    style B fill:#c8e6c9
+    style H fill:#c8e6c9
+    style BEFORE fill:#ffebee
+    style AFTER fill:#f1f8e9
+```
+
+---
+
+## Diagram 3: Translator Logic (Old vs. New)
+
+```mermaid
+graph LR
+    A["Freereg1CsvEntry<br/>groom_forename: John<br/>groom_surname: Smith<br/>bride_forename: Jane<br/>bride_surname: Doe"]
+    
+    A -->|"OLD Code<br/>(Before Swap)"| B["Array Order:<br/>[bride, groom]<br/>[Jane Doe, John Smith]<br/>❌ Bride First"]
+    
+    A -->|"NEW Code<br/>(After Swap)"| C["Array Order:<br/>[groom, bride]<br/>[John Smith, Jane Doe]<br/>✓ Groom First"]
+    
+    B -.->|"WITHOUT Reindex<br/>Old Records Stay:<br/>Bride First"| D["Inconsistency!<br/>Old records: [b, g]<br/>New records: [g, b]"]
+    
+    C -->|"WITH Reindex<br/>All Records Update:<br/>Groom First"| E["Consistency!<br/>All records: [g, b]"]
+    
+    style A fill:#e3f2fd
+    style B fill:#ffcdd2
+    style C fill:#c8e6c9
+    style D fill:#ffcdd2
+    style E fill:#c8e6c9
+```
+
+---
+
+## Diagram 4: Reindex Execution Timeline (County-by-County)
+
+```mermaid
+timeline
+    title Phased Reindex Timeline
+    
+    section Preparation
+        Code Deploy : deploy
+        : "Bride/Groom swap in translator"
+        
+    section Staging Validation
+        Test County : staging_test
+        : "Run rake on staging county"
+        : "Verify transcript_names order changed"
+        : "~15 min execution"
+        
+    section Production (County-by-County)
+        County 1 (YKS) : prod_1
+        : "Execute task"
+        : "Verify 10+ records"
+        : "~45 min"
+        
+        County 2 (SOM) : prod_2
+        : "Execute task"
+        : "Verify 10+ records"
+        : "~60 min"
+        
+        County 3+ (Continue) : prod_3
+        : "D, E, F, G, H, I, J, ..."
+        : "Each: Execute + Verify"
+        : "Loop until all counties done"
+        
+    section Final
+        Final Verification : final
+        : "Check random samples from all counties"
+        : "Confirm all groom-first"
+        : "Announce completion"
+```
+
+---
+
+## Diagram 5: Denormalization Trade-Off
+
+```mermaid
+graph TB
+    A["SearchRecord in MongoDB"]
+    
+    A --> B["Denormalized (Same Data Stored Multiple Times)"]
+    
+    B --> C["Benefits ✅"]
+    B --> D["Trade-Offs ⚠️"]
+    
+    C --> C1["Fast Search<br/>(No joins)"]
+    C --> C2["Fast Display<br/>(transcript_names ready)"]
+    C --> C3["All Data<br/>in One Document"]
+    
+    D --> D1["If Translator Changes<br/>Must Reindex"]
+    D --> D2["Storage Overhead<br/>(Duplicate Data)"]
+    D --> D3["Complex Updates<br/>(Update all copies)"]
+    
+    style A fill:#e1f5ff
+    style B fill:#b3e5fc
+    style C fill:#c8e6c9
+    style D fill:#ffcdd2
+    style C1 fill:#a5d6a7
+    style C2 fill:#a5d6a7
+    style C3 fill:#a5d6a7
+    style D1 fill:#ef9a9a
+    style D2 fill:#ef9a9a
+    style D3 fill:#ef9a9a
+```
+
+---
+
+## Diagram 6: 7-Step Transform Pipeline
+
+```mermaid
+graph TD
+    A["transcript_names<br/>[{role:g, ...}, {role:b, ...}]<br/>(Raw input)"] 
+    
+    A -->|"Step 1: populate_search_from_transcript"| B["search_names built<br/>(Convert to SearchName objects)"]
+    
+    B -->|"Step 2: downcase_all"| C["All names lowercased<br/>(Case-insensitive search)"]
+    
+    C -->|"Step 3: separate_all"| D["Compound names split<br/>(John-Paul → John, Paul)"]
+    
+    D -->|"Step 4: emend_all"| E["Corrections applied<br/>(Fix misspellings)"]
+    
+    E -->|"Step 5: transform_ucf"| F["Unicode normalized<br/>(Diacritics, etc.)"]
+    
+    F -->|"Step 6: create_soundex"| G["search_soundex added<br/>(Phonetic codes for fuzzy match)"]
+    
+    G -->|"Step 7: transform_date"| H["search_dates normalized<br/>(Standardized date format)"]
+    
+    H -->|"Result"| I["Fully indexed SearchRecord<br/>(Ready for search)"]
+    
+    style A fill:#e3f2fd
+    style B fill:#bbdefb
+    style C fill:#90caf9
+    style D fill:#64b5f6
+    style E fill:#42a5f5
+    style F fill:#2196f3
+    style G fill:#1e88e5
+    style H fill:#1976d2
+    style I fill:#1565c0
+```
+
+---
+
+## Diagram 7: Freereg1CsvEntry as Source of Truth
+
+```mermaid
+graph LR
+    A["Freereg1CsvEntry<br/>(Source of Truth)<br/>Raw CSV fields stored"]
+    
+    A -->|"Used by<br/>Translator"| B["Freereg1Translator<br/>(Stateless converter)"]
+    
+    A -->|"Also linked to"| C["SearchRecord<br/>(Denormalized index)"]
+    
+    B -->|"Produces"| D["transcript_names<br/>attribute hash"]
+    
+    D -->|"Stored in"| C
+    
+    C -->|"Transform<br/>to derive"| E["search_names<br/>search_soundex<br/>search_dates"]
+    
+    A -->|"⚠️ When Translator<br/>Logic Changes"| F["Re-run Translator<br/>on All Entries"]
+    
+    F -->|"Updates (via Rake task)"| C
+    
+    style A fill:#fff3e0
+    style B fill:#ffe0b2
+    style C fill:#ffcc80
+    style D fill:#ffb74d
+    style E fill:#ffa726
+    style F fill:#ff7043
+```
+
+---
+
+## Diagram 8: Reindex Error Recovery
+
+```mermaid
+graph TD
+    A["Reindex Fails<br/>(Timeout, error, etc.)"]
+    
+    A --> B{"Check Logs<br/>for Error"}
+    
+    B -->|"Timeout Error"| C["County too large<br/>Database overloaded"]
+    C --> C1["Solution:<br/>Batch into smaller chunks<br/>Or run off-peak"]
+    
+    B -->|"Connection Error"| D["MongoDB/Rails<br/>connection lost"]
+    D --> D1["Solution:<br/>Check DB health<br/>Restart Rails<br/>Retry task"]
+    
+    B -->|"Other Error"| E["See troubleshooting.md"]
+    
+    A --> F{"Check Progress:<br/>Which counties<br/>done?"}
+    
+    F -->|"Partial complete"| G["Resume from<br/>next county"]
+    G --> H["Run remaining<br/>counties"]
+    
+    F -->|"No progress"| I["Rerun from start"]
+    
+    H --> J["Continue County-by-County"]
+    
+    style A fill:#ffcdd2
+    style C fill:#ffb74d
+    style D fill:#ffb74d
+    style E fill:#ffb74d
+    style J fill:#c8e6c9
+```
+
+---
+
+## Diagram 9: Search Result Impact (Before vs. After)
+
+```mermaid
+graph TB
+    subgraph BEFORE["BEFORE Reindex"]
+        A["Marriage Record 1<br/>(Old)<br/>Query: Search for 'Jane Doe'<br/>Result: [Jane Doe (bride), John Smith (groom)]<br/>❌ Bride first in results"]
+        
+        B["Marriage Record 2<br/>(New)<br/>Query: Search for 'Jane Doe'<br/>Result: [John Smith (groom), Jane Doe (bride)]<br/>✓ Groom first in results"]
+    end
+    
+    subgraph AFTER["AFTER Reindex"]
+        C["Marriage Record 1<br/>(Updated)<br/>Query: Search for 'Jane Doe'<br/>Result: [John Smith (groom), Jane Doe (bride)]<br/>✓ Groom first (FIXED!)"]
+        
+        D["Marriage Record 2<br/>(Already correct)<br/>Query: Search for 'Jane Doe'<br/>Result: [John Smith (groom), Jane Doe (bride)]<br/>✓ Groom first"]
+    end
+    
+    BEFORE -->|"After Reindex"| AFTER
+    
+    style BEFORE fill:#ffebee
+    style A fill:#ffcdd2
+    style B fill:#c8e6c9
+    style AFTER fill:#f1f8e9
+    style C fill:#c8e6c9
+    style D fill:#c8e6c9
+```
+
+---
+
+## Diagram 10: Rake Task Workflow
+
+```mermaid
+graph TD
+    A["Rake Task Start<br/>reprocess_batches_for_a_county[YKS]"]
+    
+    A --> B["Query MongoDB:<br/>Find all Freereg1CsvFile<br/>for county YKS"]
+    
+    B --> C["Loop: For each CSV file in county"]
+    
+    C --> D["Load CSV file metadata<br/>(file.entries.count)"]
+    
+    D --> E["Inner Loop: For each entry in file"]
+    
+    E --> F["Call Freereg1Translator<br/>with entry + file"]
+    
+    F --> G["Get attributes hash<br/>(new translator, groom-first)"]
+    
+    G --> H["searchRecord =<br/>entry.search_record"]
+    
+    H --> I["sr.attributes = attributes<br/>(Update with new data)"]
+    
+    I --> J["sr.transform()<br/>(7-step pipeline)"]
+    
+    J --> K["sr.save()<br/>(Write to MongoDB)"]
+    
+    K --> L{"More entries<br/>in file?"}
+    
+    L -->|"YES"| E
+    L -->|"NO"| M{"More files<br/>in county?"}
+    
+    M -->|"YES"| C
+    M -->|"NO"| N["Print summary<br/>(Total records processed)"]
+    
+    N --> O["✓ Task Complete"]
+    
+    style A fill:#e3f2fd
+    style F fill:#bbdefb
+    style J fill:#90caf9
+    style K fill:#64b5f6
+    style O fill:#4caf50
+```
+
+---
+
+## How to Read These Diagrams
+
+1. **Diagram 1 (Data Flow)**: Follow this to understand the path from CSV → MongoDB → Search results
+2. **Diagram 2 (Inconsistency)**: Shows the problem (before reindex) and solution (after reindex)
+3. **Diagram 3 (Translator Logic)**: Compares old code vs. new code
+4. **Diagram 4 (Timeline)**: Use to plan your reindex schedule
+5. **Diagram 5 (Denormalization)**: Explains why we store data multiple times
+6. **Diagram 6 (Transform)**: Deep dive into the 7-step pipeline
+7. **Diagram 7 (Source of Truth)**: Explains why Freereg1CsvEntry is used for reindex
+8. **Diagram 8 (Error Recovery)**: What to do if something breaks
+9. **Diagram 9 (User Impact)**: Before/after from user's perspective
+10. **Diagram 10 (Task Workflow)**: Step-by-step execution of the Rake task
+
+---
+
+## Next Steps
+
+- **Want step-by-step commands?** Go to [how-to-run-reindex.md](how-to-run-reindex.md)
+- **Want technical details?** Go to [why-it-works.md](why-it-works.md)
+- **Something broken?** Go to [troubleshooting.md](troubleshooting.md)
