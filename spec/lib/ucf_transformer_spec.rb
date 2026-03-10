@@ -16,7 +16,7 @@ RSpec.describe UcfTransformer do
       let(:input) { "Dr.J" }
 
       it "escapes dots so they match literal periods" do
-        expect(regex).to eq(/^Dr\.J$/)
+        expect(regex).to eq(/^Dr\.J$/i)
         # Exact 4-character match: D-r-.-J
         expect("Dr.J").to match(regex)
         # Longer string should NOT match (ensures exact name matching)
@@ -54,13 +54,67 @@ RSpec.describe UcfTransformer do
       end
     end
 
+    # context "plain quantifier {m,n}" do
+    #   let(:input) { "A{2,3}n" }
+    #   it "preserves valid regex quantifiers" do
+    #     expect("Aann").to match(regex)
+    #     expect("Axyzn").to match(regex)
+    #     expect("Ann").not_to match(regex) # only 1 'A'
+    #   end
+    # end
+
     context "plain quantifier {m,n}" do
       let(:input) { "A{2,3}n" }
+      it "preserves valid regex quantifiers (applies to preceding char)" do
+        # A repeated 2 times, then n
+        expect("AAn").to match(regex)
+        expect("Aan").to match(regex)
+        # A repeated 3 times, then n
+        expect("AAAn").to match(regex)
+        expect("AAan").to match(regex)
+        expect("Aaan").to match(regex)
 
-      it "preserves valid regex quantifiers" do
-        expect("Aann").to match(regex)
-        expect("Axyzn").to match(regex)
-        expect("Ann").not_to match(regex) # only 1 'A'
+        # A repeated only 1 time - should NOT match
+        expect("An").not_to match(regex)
+        expect("an").not_to match(regex)
+        # A repeated 4 times - should NOT match
+        expect("AAAAn").not_to match(regex)
+        expect("Aaaan").not_to match(regex)
+        expect("AaAan").not_to match(regex)
+      end
+    end
+
+    context "character repetition {m,n} (preceding char repeats)" do
+      let(:input) { "Den{1,2}is" }
+
+      it "preserves bare quantifiers (char repeats m-n times)" do
+        # 'n' repeats 1 time
+        expect("Denis").to match(regex)
+        # 'n' repeats 2 times
+        expect("Dennis").to match(regex)
+        # 'n' doesn't appear (0 times) - should NOT match
+        expect("Deis").not_to match(regex)
+        # 'n' repeats 3 times - should NOT match
+        expect("Denniis").not_to match(regex)
+      end
+    end
+
+    context "wildcard repetition _{m,n} (any char repeats)" do
+      let(:input) { "Den_{1,2}is" }
+
+      it "converts _{m,n} to .{m,n} (any char repeats m-n times)" do
+        # underscore replacement matches 1 char (n)
+        expect("Dennis").to match(regex)
+        # underscore replacement matches 2 chars (nn)
+        expect("Dennnis").to match(regex)
+        # underscore replacement matches 1 char (a)
+        expect("Denais").to match(regex)
+        # underscore replacement matches 2 chars (bc)
+        expect("Denbcis").to match(regex)
+        # underscore replacement matches 0 chars - should NOT match
+        expect("Deis").not_to match(regex)
+        # underscore replacement matches 3 chars - should NOT match (outside {1,2} range)
+        expect("Dennnnis").not_to match(regex)
       end
     end
 
