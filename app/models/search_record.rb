@@ -606,10 +606,35 @@ class SearchRecord
     the_digest
   end
 
-  def contains_wildcard_ucf?
-    search_names.detect do |name|
-      name.contains_wildcard_ucf?
+  # def contains_wildcard_ucf?
+  #   search_names.detect do |name|
+  #     name.contains_wildcard_ucf?
+  #   end
+  # end
+
+  # Returns the SearchName object if found (truthy), or nil (falsy)
+  # Used in entry edit logic where truthiness is sufficient
+  # Callers: Freereg1CsvEntry#update_place_ucf_list
+  def contains_wildcard_ucf
+    Rails.logger.info "Checking SearchRecord #{id} for wildcard UCFs..."
+
+    ucf_name = search_names.detect do |name|
+      result = name.contains_wildcard_ucf?  # search_name
+      Rails.logger.debug "Evaluating name: \n#{name.inspect} -> contains_wildcard_ucf = #{result}"
+      result
     end
+    
+    if ucf_name
+      Rails.logger.info "Wildcard UCF detected in SearchRecord #{id}"
+      Rails.logger.debug "ucf name details: /n#{ucf_name.inspect}"
+    else
+      Rails.logger.info "No wildcard UCF detected in SearchRecord #{id}"
+    end
+    
+    Rails.logger.debug "ucf_name: #{ucf_name.inspect}"
+
+    # return the object or nil (falsy)
+    ucf_name
   end
 
   def copy_name(name)
