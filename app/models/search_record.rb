@@ -15,6 +15,7 @@ class SearchRecord
   # include Emendor
   SEARCHABLE_KEYS = [:first_name, :last_name]
   SYMBOLS_TO_CLEAN = ['.', ':', ';', "'", '-', '`', '"'].freeze
+  DELETE_SET = SYMBOLS_TO_CLEAN.join.gsub('-', '\-').freeze
 
   module Source
     TRANSCRIPT = 'transcript'
@@ -943,8 +944,14 @@ class SearchRecord
     SYMBOLS_TO_CLEAN.any? { |sym| names.include?(sym) } if names.present?
   end
 
+  # def clean_name(transcript_name)
+  #   transcript_name.delete(SYMBOLS_TO_CLEAN.join.gsub('-', '\-'))
+  # end
+
   def clean_name(transcript_name)
-    transcript_name.delete(SYMBOLS_TO_CLEAN.join.gsub('-', '\-'))
+    return transcript_name if transcript_name.blank?
+    cleaned = transcript_name.delete(DELETE_SET)
+    cleaned.squeeze(' ').strip
   end
 
   def other_possible_last_name last_names_hash
