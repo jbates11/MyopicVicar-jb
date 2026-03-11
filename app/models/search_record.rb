@@ -159,8 +159,12 @@ class SearchRecord
 
   }
 
-
   index({ place_id: 1, locations_names: 1 }, { name: 'place_location' })
+
+  # This speeds up the lookup of SearchRecords by their Entry ID
+  index({ freereg1_csv_entry_id: 1 })
+  # Allows MongoDB to index into the array of embedded documents.
+  index({ "search_names.first_name": 1, "search_names.last_name": 1 })
 
   class << self
     # This is FreeREG-specific and should be considered

@@ -1004,35 +1004,22 @@ class Freereg1CsvFile
   #   ids
   # end
 
+  # Using Mongoid criteria
   def search_record_ids_with_wildcard_ucf
-    Rails.logger.info "Scanning Freereg1CsvFile #{id} for wildcard UCFs..."
-    ids = []
+    # 1. Get the IDs of the entries for this file
+    entry_ids = freereg1_csv_entries.pluck(:id)
+    return [] if entry_ids.empty?
 
-    freereg1_csv_entries.each do |entry|
-      entry.reload
-      sr = entry.search_record
+    wildcard_regex = /[*_?{}]/
 
-      if sr
-        flagged = sr.contains_wildcard_ucf  # search_record
-        Rails.logger.debug "Entry #{entry.id} -> SearchRecord #{sr.id} flagged? #{flagged}"
-
-        if flagged
-          ids << sr.id
-          Rails.logger.debug "Flagged SearchRecord details:\n#{sr.ai}"
-        end
-      else
-        Rails.logger.debug "Entry #{entry.id} has no linked SearchRecord"
-      end
-    end
-
-    if ids.any?
-      Rails.logger.info "Freereg1CsvFile #{id} flagged #{ids.size} SearchRecords"
-    else
-      Rails.logger.info "Freereg1CsvFile #{id} has no flagged SearchRecords"
-    end
-
-    Rails.logger.info "---ids: #{ids}\n"
-    ids
+    # 2. Find SearchRecords where the 'freereg1_csv_entry_id' matches our entries
+    # AND the embedded search_names contain a wildcard
+    SearchRecord.where(:freereg1_csv_entry_id.in => entry_ids)
+                .any_of(
+                  { "search_names.first_name" => wildcard_regex },
+                  { "search_names.last_name"  => wildcard_regex }
+                )
+                .distinct(:id).map(&:to_s)
   end
 
   def to_register
