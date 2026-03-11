@@ -685,11 +685,75 @@ class Place
     PlaceCache.refresh(chapman_code)
   end
 
+  # def update_ucf_list(file)
+  #   ids = file.search_record_ids_with_wildcard_ucf
+  #   self.ucf_list[file.id.to_s] = ids if ids && ids.size > 0
+  #   file.ucf_list = ids if ids && ids.size > 0
+  #   file.ucf_updated = DateTime.now.to_date
+  # end
+
   def update_ucf_list(file)
+    # --- Guard Clauses -------------------------------------------------------
+    return unless file.present?
+
+    unless file.respond_to?(:search_record_ids_with_wildcard_ucf)
+      Rails.logger.error(
+        "UCF: Operation aborted | reason: missing method | " \
+        "place_id: #{id} | file_id: #{file.try(:id)}"
+      )
+      return
+    end
+
+    # --- Logging --------------------------------------------------------------
+    Rails.logger.info(
+      "UCF: Operation | action: update_ucf_list | place_id: #{id} | file_id: #{file.id}"
+    )
+
+    # --- Fetch IDs ------------------------------------------------------------
     ids = file.search_record_ids_with_wildcard_ucf
-    self.ucf_list[file.id.to_s] = ids if ids && ids.size > 0
-    file.ucf_list = ids if ids && ids.size > 0
-    file.ucf_updated = DateTime.now.to_date
+    Rails.logger.debug "Flagged SearchRecord IDs from File #{file.id}: #{ids.inspect}"
+
+    # --- Update Place + File --------------------------------------------------
+    file_key = file.id.to_s
+
+    if ids.present?
+      # Case: Wildcard records found
+      
+      # Place-level UCF list
+      self.ucf_list[file_key] = ids  # Array of IDs
+      # File-level UCF list
+      file.ucf_list = ids
+
+      Rails.logger.info(
+        "UCF: wildcard records found | place_id: #{id} | file_id: #{file.id} | count: #{ids.size}"
+      )
+    else
+      # Case: No wildcard records - Explicit empty states 
+      # self.ucf_list.delete(file_key) # alternate approach
+      self.ucf_list[file.id.to_s] = []
+      file.ucf_list = []
+
+      Rails.logger.info(
+        "UCF: no wildcard records | place_id: #{id} | file_id: #{file.id}"
+      )
+    end
+
+    # --- Always update timestamps + counters ---------------------------------
+    today = DateTime.now.to_date
+    now   = DateTime.now
+
+    file.ucf_updated          = today
+    self.ucf_list_updated_at  = now
+    self.ucf_list_record_count = ucf_record_ids.size
+    self.ucf_list_file_count   = ucf_list.keys.size
+
+    file.save
+    self.save
+
+    Rails.logger.info(
+      "UCF: summary | place_id: #{id} | file_id: #{file.id} | " \
+      "record_count: #{ucf_list_record_count} | file_count: #{ucf_list_file_count}"
+    )
   end
 
   def clean_up_ucf_list
