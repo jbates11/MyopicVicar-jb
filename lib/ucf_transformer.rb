@@ -132,17 +132,20 @@ module UcfTransformer
     # This prevents the dot from matching "any character" in Regex.
     regex_string = name_part.gsub('.', '\.')
 
-    # 2. Handle range wildcards: "A{2,3}n" or "A_{2,3}n" -> "A.{2,3}n"
-    # UCF ranges mean "any sequence of length n to m", which in Regex is ".{n,m}".
-    # We look for an optional underscore followed by the range brackets.
-    regex_string = regex_string.gsub(/_?\{(\d*,?\d*)\}/, '.{\1}')
+    # 2a. Handle underscore + range wildcards: "Den_{1,2}is" -> "Den.{1,2}is"
+    # UCF ranges with underscore mean "any sequence of length n to m", which in Regex is ".{n,m}".
+    regex_string = regex_string.gsub(/_\{(\d*,?\d*)\}/, '.{\1}')
+
+    # 2b. Bare quantifiers are left unchanged: "Den{1,2}is" stays as "Den{1,2}is"
+    # In standard regex, {m,n} applies to the preceding character/group (the 'n' repeats m-n times).
+    # No substitution needed for bare quantifiers.
 
     # 3. Convert single character wildcards: "Sm_th" -> "Sm.th"
     # UCF "_" matches exactly one character, which in Regex is ".".
     regex_string = regex_string.gsub('_', '.')
 
     # 4. Convert multi-character wildcards: "Jo*" -> "Jo\w+"
-    # UCF "+" matches one or more word characters, which in Regex is "\w+".
+    # UCF "*" matches one or more word characters, which in Regex is "\w+".
     regex_string = regex_string.gsub('*', '\w+')
 
     begin
@@ -154,16 +157,16 @@ module UcfTransformer
       # Add anchors to enforce exact full-string matching (not substring matching)
       anchored_pattern = "^#{regex_string}$"
 
-      # Attempt to create a new Regular Expression object.
-      ::Regexp.new(anchored_pattern)
+      # Attempt to create a new Regular Expression object with case-insensitive matching.
+      ::Regexp.new(anchored_pattern, Regexp::IGNORECASE)
     rescue RegexpError => e
       # If the resulting pattern is invalid Regex (e.g. mismatched brackets),
       # log a warning and return the original string so the application doesn't crash.
       Rails.logger.warn("UCF to Regex conversion failed for '#{name_part}': #{e.message}")
       name_part
     end
-  end
-
+  end 
+  
   def self.wildcard_ucf_to_regex(name_part)
   end
 
