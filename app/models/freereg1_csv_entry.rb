@@ -931,7 +931,6 @@ class Freereg1CsvEntry
   # end
 
   def update_place_ucf_list(place, file, old_search_record)
-
     # Validate all preconditions before attempting update
     valid, error_message = validate_ucf_update_preconditions(place, file, old_search_record)
 
@@ -951,12 +950,13 @@ class Freereg1CsvEntry
     search_record_has_ucf = search_record.contains_wildcard_ucf.present?
 
     Rails.logger.info(
-      "UCF: Operation | action: update_place_ucf_list | place_id: #{place.id} | file_id: #{file.id} | record_id: #{search_record.id}"
+      "UCF: Validation complete | action: update_place_ucf_list | place_id: #{place.id} | file_id: #{file.id} | record_id: #{search_record.id}"
     )
 
-    # Case 0: No change
+    # Case 0: No change required
     return unless file_in_ucf_list || search_record_has_ucf
 
+    # Single persistence wrapper with rollback capability
     safe_update_ucf!(place, file) do
       if file_in_ucf_list && search_record_has_ucf
         handle_add_ucf(place, file, file_key, old_search_record)
@@ -968,6 +968,10 @@ class Freereg1CsvEntry
         handle_new_ucf(place, file, file_key)
       end
     end
+
+    Rails.logger.info(
+      "[UCF] Update complete | place_id: #{place.id} | file_id: #{file.id} | entry_id: #{id}"
+    )
   end
 
   def errors_in_fields
@@ -1526,7 +1530,7 @@ class Freereg1CsvEntry
       p "freereg entry validations #{id} no record type"
     end
   end
-  
+
   def get_listing_of_witnesses
     witnesses = Array.new
     single_witness = Array.new(2)
