@@ -102,11 +102,12 @@ class Freereg1CsvFile
   has_many :batch_errors
 
   has_many :freereg1_csv_entries, validate: false, order: :id.asc
-  VALID_DAY = /\A\d{1,2}\z/
-  VALID_MONTH = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP","SEPT", "OCT", "NOV", "DEC", "*","JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"]
-  VALID_YEAR = /\A\d{4}\z/
-  ANOTHER_VALID_YEAR = /\A\d{2}\z/
-  MONTHS = {
+
+  VALID_DAY ||= /\A\d{1,2}\z/
+  VALID_MONTH ||= ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP","SEPT", "OCT", "NOV", "DEC", "*","JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"]
+  VALID_YEAR ||= /\A\d{4}\z/
+  ANOTHER_VALID_YEAR ||= /\A\d{2}\z/
+  MONTHS ||= {
     'Jan' => '01',
     'Feb' => '02',
     'Mar' => '03',
@@ -120,7 +121,6 @@ class Freereg1CsvFile
     'Nov' => '11',
     'Dec' => '12'
   }
-
 
   ###################################################################### class methods
   class << self
