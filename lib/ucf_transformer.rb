@@ -126,26 +126,42 @@ module UcfTransformer
   # end
 
   def self.ucf_to_regex(name_part)
-    transformed =
-       name_part
-        .gsub(/\./, '\.')              # escape literal dots
-        .gsub(/_\{(\d+,\d+|\d+,\s*|\d+)\}/) { |m|
-          # Handle underscore + curly brace quantifiers
-          quantifier = m.match(/_\{(.+)\}/)[1]
-          "\\w{#{quantifier}}"
-        }
-        .gsub(/_/, ".")                # underscore → any single char
-        .gsub(/\*/, '\w+')             # asterisk → word characters
-        .gsub(/\[([^\]]+)\]/, '[\1]')  # preserve square bracket groups
+    return name_part if name_part.blank?
+    
+    # 1. Escape literal dots: "Dr.J*" -> "Dr\.J*"
+    # This prevents the dot from matching "any character" in Regex.
+    regex_string = name_part.gsub('.', '\.')
+
+    # 2. Handle range wildcards: "A{2,3}n" or "A_{2,3}n" -> "A.{2,3}n"
+    # UCF ranges mean "any sequence of length n to m", which in Regex is ".{n,m}".
+    # We look for an optional underscore followed by the range brackets.
+    regex_string = regex_string.gsub(/_?\{(\d*,?\d*)\}/, '.{\1}')
+
+    # 3. Convert single character wildcards: "Sm_th" -> "Sm.th"
+    # UCF "_" matches exactly one character, which in Regex is ".".
+    regex_string = regex_string.gsub('_', '.')
+
+    # 4. Convert multi-character wildcards: "Jo*" -> "Jo\w+"
+    # UCF "+" matches one or more word characters, which in Regex is "\w+".
+    regex_string = regex_string.gsub('*', '\w+')
 
     begin
-      Regexp.new(transformed)
+      # Detect unclosed quantifiers
+      if regex_string =~ /\{\d+(?:,\d+)?$/
+        raise RegexpError, "Unclosed quantifier"
+      end
+
+      # Attempt to create a new Regular Expression object.
+      ::Regexp.new(regex_string)
     rescue RegexpError => e
-      Rails.logger.warn("[#{Time.current.iso8601}] UCF regex error: #{e.message}")
+      # If the resulting pattern is invalid Regex (e.g. mismatched brackets),
+      # log a warning and return the original string so the application doesn't crash.
+      Rails.logger.warn("UCF to Regex conversion failed for '#{name_part}': #{e.message}")
       name_part
     end
-  end  
+  end
 
   def self.wildcard_ucf_to_regex(name_part)
   end
+  
 end
