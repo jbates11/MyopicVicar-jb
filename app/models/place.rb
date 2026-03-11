@@ -666,6 +666,7 @@ class Place
   # end
 
   def ucf_record_ids
+    # Returns all unique SearchRecord IDs across all files in ucf_list
     # .compact removes any nils to prevent crashes
     # .flatten(1) turns the nested arrays into one single array
     self.ucf_list.values.compact.flatten(1).uniq
