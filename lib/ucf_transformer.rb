@@ -151,8 +151,11 @@ module UcfTransformer
         raise RegexpError, "Unclosed quantifier"
       end
 
+      # Add anchors to enforce exact full-string matching (not substring matching)
+      anchored_pattern = "^#{regex_string}$"
+
       # Attempt to create a new Regular Expression object.
-      ::Regexp.new(regex_string)
+      ::Regexp.new(anchored_pattern)
     rescue RegexpError => e
       # If the resulting pattern is invalid Regex (e.g. mismatched brackets),
       # log a warning and return the original string so the application doesn't crash.
@@ -163,5 +166,5 @@ module UcfTransformer
 
   def self.wildcard_ucf_to_regex(name_part)
   end
-  
+
 end
