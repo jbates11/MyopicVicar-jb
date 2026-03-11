@@ -8,15 +8,22 @@ class Csvfile < CarrierWave::Uploader::Base
   field :type_of_field, type: String, default: 'Traditional' # CEN
   field :type_of_processing, type: String, default: 'No POB Warnings' # CEN
   field :action, type: String
+  
   # files are stored in Rails.application.config.datafiles
   mount_uploader :csvfile, CsvfileUploader
-  PROCESSING_TIME_THRESHOLD = 1000 #basically file size | previously 600 
+  
+  PROCESSING_TIME_THRESHOLD = 1000 # basically file size | previously 600 
+
   def check_for_existing_file_and_save
     # this saves the exiting file in the attic
+    Rails.logger.info "[check_for_existing_file_and_save] Start of method"
+
     process = true
     batch = PhysicalFile.where(userid: userid, file_name: file_name, base: true).first
+
     if batch.present?
       file_location = File.join(Rails.application.config.datafiles, userid, file_name)
+
       if File.file?(file_location)
         newdir = File.join(File.join(Rails.application.config.datafiles, userid), '.attic')
         Dir.mkdir(newdir) unless Dir.exists?(newdir)
@@ -26,12 +33,15 @@ class Csvfile < CarrierWave::Uploader::Base
         FileUtils.mv(renamed_file, newdir, verbose: true)
         FileUtils.rm(file_location) if File.file?(file_location)
         user = UseridDetail.where(userid: userid).first
+
         if user.present?
           attic_file = AtticFile.new(name: "#{file_name}.#{time}", date_created: DateTime.strptime(time, '%s'), userid_detail_id: user.id)
           attic_file.save
         end
       end
     end
+
+    Rails.logger.info "[check_for_existing_file_and_save] End of method"
     process
   end
 
@@ -54,6 +64,7 @@ class Csvfile < CarrierWave::Uploader::Base
   end
 
   def create_batch_unless_exists
+    Rails.logger.info "[create_batch_unless_exists] Start of method"
     batch = PhysicalFile.where(userid: userid, file_name: file_name).first
     if batch.present?
       batch.update_attributes(base: true, base_uploaded_date: Time.now, file_processed: false)
@@ -61,6 +72,8 @@ class Csvfile < CarrierWave::Uploader::Base
       batch = PhysicalFile.new(userid: userid, file_name: file_name, base: true, base_uploaded_date: Time.now, file_processed: false)
       batch.save
     end
+
+    Rails.logger.info "[create_batch_unless_exists] End of method"
     batch
   end
 
@@ -81,17 +94,23 @@ class Csvfile < CarrierWave::Uploader::Base
   end
 
   def estimate_time
+    Rails.logger.info "[estimate_time] Start of method"
     size = 1
     place = File.join(Rails.application.config.datafiles, userid, file_name)
     size = File.size(place)
     unit = 0.001
     processing_time = (size.to_i * unit).to_i
+
+    Rails.logger.info "[estimate_time] End of method"
     processing_time
   end
 
   def estimate_size
+    Rails.logger.info "[estimate_size] Start of method"
     place = File.join(Rails.application.config.datafiles, userid, file_name)
     size = File.size?(place)
+
+    Rails.logger.info "[estimate_size] End of method"
     size
   end
 
@@ -139,16 +158,16 @@ class Csvfile < CarrierWave::Uploader::Base
         batch.update_attributes(waiting_to_be_processed: true, waiting_date: Time.now)
         rake_lock_file = File.join(Rails.root, 'tmp', 'processing_rake_lock_file.txt')
         processor_initiation_lock_file = File.join(Rails.root, 'tmp', 'processor_initiation_lock_file.txt')
-        #if File.exist?(processor_initiation_lock_file)
+        # if File.exist?(processor_initiation_lock_file)
          # message = "The csv file #{file_name} has been sent for processing . You will receive an email when it has been completed."
-        #else
+        # else
           initiation_locking_file = File.new(processor_initiation_lock_file, 'w') unless File.exist?(processor_initiation_lock_file)
           pid1 = Kernel.spawn("rake build:freereg_new_update[\"create_search_records\",\"waiting\",\"no\",\"a-9\"]")
           message = "The csv file #{file_name} is being processed . You will receive an email when it has been completed."
-        #end
+        # end
         process = true
       elsif processing_time >= PROCESSING_TIME_THRESHOLD
-        batch.destroy #update_attributes(base: true, base_uploaded_date: Time.now, file_processed: false)
+        batch.destroy # update_attributes(base: true, base_uploaded_date: Time.now, file_processed: false)
         message = "Your file #{file_name} is not being processed in its current form as it is too large. Your coordinator and the data managers have been informed. Please discuss with them how to proceed. "
         UserMailer.report_to_data_manger_of_large_file(file_name, userid).deliver_now
         process = false
@@ -161,16 +180,17 @@ class Csvfile < CarrierWave::Uploader::Base
       logger.warn("FREECEN:CSV_PROCESSING: rake task for #{pid1}")
       process = true
     end
-    #raise ([process, message]).inspect
+    # raise ([process, message]).inspect
     [process, message]
   end
 
   def setup_batch_on_replace(original_file_name)
     return false, 'The file you are replacing must have the same name' unless check_name(original_file_name)
+    Rails.logger.info "[setup_batch_on_replace] Start of method"
 
     proceed = true
     proceed = physical_file_for_user_exists
-    #lets check that the file has indeed been processed previously.
+    # lets check that the file has indeed been processed previously.
     PhysicalFile.where(userid: userid, file_name: file_name).exists? ? batch_entries_present = true : batch_entries_present = false
     if !proceed
       message = 'You are attempting to replace a file you do not have. Likely you are a coordinator replacing a file belonging to someone else. You must replace into their userid.'
@@ -195,6 +215,8 @@ class Csvfile < CarrierWave::Uploader::Base
       message = 'A situation has occurred that should not have. Please have your coordinator contact system administration.'
       proceed = false
     end
+
+    Rails.logger.info "[setup_batch_on_replace] End of method"
     [proceed, message]
   end
 
