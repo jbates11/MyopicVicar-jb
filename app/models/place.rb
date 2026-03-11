@@ -661,9 +661,15 @@ class Place
     end
   end
 
+  # def ucf_record_ids
+  #   self.ucf_list.values.inject([]) { |accum, value| accum + value }
+  # end
+
   def ucf_record_ids
-    self.ucf_list.values.inject([]) { |accum, value| accum + value }
-  end
+    # .compact removes any nils to prevent crashes
+    # .flatten(1) turns the nested arrays into one single array
+    self.ucf_list.values.compact.flatten(1).uniq
+  end 
 
   def update_reg_data_present
     if self.data_present?
