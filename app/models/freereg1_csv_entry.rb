@@ -1637,14 +1637,13 @@ class Freereg1CsvEntry
     place.ucf_list_file_count   = place.ucf_list.keys.size
     place.ucf_list_updated_at   = DateTime.now
 
-    # --- Persist changes ---
+  # --- Persist changes ---
     file.save
-    place.save
-
-    Rails.logger.info { "---✔ #{message} - updated place ucf_list" }
-    logger.info "---place_ucf:\n #{place.ucf_list.ai(index: true, plain: true)}"
     Rails.logger.info { "---✔ #{message} - updated file ucf_list" }
-    logger.info "---file_ucf:\n #{file.ucf_list.ai(index: true, plain: true)}"
+    
+    place.save
+    Rails.logger.info { "---✔ #{message} - updated place ucf_list" }
+
   end
 
   def validate_ucf_update_preconditions(place, file, old_search_record)
