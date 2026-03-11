@@ -701,7 +701,7 @@ class Freereg1CsvFile
     rescue StandardError => e
       Rails.logger.error(
         "[Freereg1CsvFile##{id}] Failed during clean_up_place_ucf_list: " \
-        "#{e.class} - #{e.message}"
+        " file: #{id} | #{e.class} - #{e.message}"
       )
       raise e
     end
