@@ -995,9 +995,14 @@ class SearchRecord
 
     Rails.logger.info("[SearchRecord] Finished populate_search_names with #{search_names.size} total search_names")
   end
-    
+
+  # def name_contains_symbols?(names)
+  #   SYMBOLS_TO_CLEAN.any? { |sym| names.include?(sym) } if names.present?
+  # end
+
   def name_contains_symbols?(names)
-    SYMBOLS_TO_CLEAN.any? { |sym| names.include?(sym) } if names.present?
+    return false if names.blank?
+    SYMBOLS_TO_CLEAN.any? { |sym| names.include?(sym) }
   end
 
   # def clean_name(transcript_name)
