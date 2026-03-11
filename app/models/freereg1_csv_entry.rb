@@ -1526,6 +1526,7 @@ class Freereg1CsvEntry
       p "freereg entry validations #{id} no record type"
     end
   end
+  
   def get_listing_of_witnesses
     witnesses = Array.new
     single_witness = Array.new(2)
