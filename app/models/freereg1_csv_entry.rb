@@ -835,48 +835,105 @@ class Freereg1CsvEntry
     search_record.update_location(self, freereg1_csv_file) if search_record.present? && freereg1_csv_file.present?
   end
 
-  def update_place_ucf_list(place, file, old_search_record)
-    file_in_ucf_list = place.ucf_list.has_key?(file.id.to_s)
-    search_record_has_ucf = search_record.contains_wildcard_ucf?.present? ? true : false
-    # No change
-    return if !file_in_ucf_list && !search_record_has_ucf
+  # def update_place_ucf_list(place, file, old_search_record)
+  #   file_in_ucf_list = place.ucf_list.has_key?(file.id.to_s)
+  #   search_record_has_ucf = search_record.contains_wildcard_ucf?.present? ? true : false
+  #   # No change
+  #   return if !file_in_ucf_list && !search_record_has_ucf
 
-    # list there and record has
-    if file_in_ucf_list && search_record_has_ucf
-      return if place.ucf_list[file.id.to_s].include?(search_record.id.to_s)
-      place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present?
-      file.ucf_list.delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present? && file.ucf_list.present?
-      place.ucf_list[file.id.to_s] << search_record.id
-      if file.ucf_list.blank?
-        file.ucf_list = []
-      end
-      file.ucf_list << search_record.id
-      file.ucf_updated = DateTime.now.to_date
-      file.save
-      place.save
+  #   # list there and record has
+  #   if file_in_ucf_list && search_record_has_ucf
+  #     return if place.ucf_list[file.id.to_s].include?(search_record.id.to_s)
+  #     place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present?
+  #     file.ucf_list.delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present? && file.ucf_list.present?
+  #     place.ucf_list[file.id.to_s] << search_record.id
+  #     if file.ucf_list.blank?
+  #       file.ucf_list = []
+  #     end
+  #     file.ucf_list << search_record.id
+  #     file.ucf_updated = DateTime.now.to_date
+  #     file.save
+  #     place.save
+  #     return
+  #   end
+  #   if file_in_ucf_list && !search_record_has_ucf
+  #     place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present?
+  #     place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == search_record.id.to_s }
+  #     file.ucf_list.delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present? && file.ucf_list.present?
+  #     file.ucf_list.delete_if { |record| record.to_s == search_record.id.to_s } if file.ucf_list.present?
+  #     file.ucf_updated = DateTime.now.to_date
+  #     file.save
+  #     place.save
+  #     return
+  #   end
+
+  #   if !file_in_ucf_list && search_record_has_ucf
+  #     place.ucf_list[file.id.to_s] = []
+  #     place.ucf_list[file.id.to_s] << search_record.id
+  #     if file.ucf_list.blank?
+  #       file.ucf_list = []
+  #     end
+  #     file.ucf_list << search_record.id
+  #     file.ucf_updated = DateTime.now.to_date
+  #     file.save
+  #     place.save
+  #   end
+
+
+  # end
+
+    def update_place_ucf_list(place, file, old_search_record)
+    # --- Guard: Ensure required associations exist ---
+    unless place.present? && file.present?
+      Rails.logger.warn(
+        "UCF: Aborting update_place_ucf_list | reason: missing association | " \
+        "entry_id: #{id} | place: #{place.present?} | file: #{file.present?}"
+      )
       return
     end
-    if file_in_ucf_list && !search_record_has_ucf
-      place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present?
-      place.ucf_list[file.id.to_s].delete_if { |record| record.to_s == search_record.id.to_s }
-      file.ucf_list.delete_if { |record| record.to_s == old_search_record.id.to_s } if old_search_record.present? && file.ucf_list.present?
-      file.ucf_list.delete_if { |record| record.to_s == search_record.id.to_s } if file.ucf_list.present?
-      file.ucf_updated = DateTime.now.to_date
-      file.save
-      place.save
+
+    unless search_record.present?
+      Rails.logger.warn(
+        "UCF: Aborting update_place_ucf_list | reason: search_record missing | " \
+        "entry_id: #{id} | file_id: #{file.id}"
+      )
       return
     end
 
-    if !file_in_ucf_list && search_record_has_ucf
-      place.ucf_list[file.id.to_s] = []
-      place.ucf_list[file.id.to_s] << search_record.id
-      if file.ucf_list.blank?
-        file.ucf_list = []
+    file_key = file.id.to_s
+    file_in_ucf_list = place.ucf_list.key?(file_key)
+    search_record_has_ucf = search_record.contains_wildcard_ucf.present?
+
+    Rails.logger.info(
+      "UCF: Operation | action: update_place_ucf_list | place_id: #{place.id} | file_id: #{file.id} | record_id: #{search_record.id}"
+    )
+
+    Rails.logger.info { "---▶ update_place_ucf_list called" }
+    Rails.logger.info { "---   file_key: #{file_key}" }
+    Rails.logger.info { "---   file_in_ucf_list: #{file_in_ucf_list}" }
+    Rails.logger.info { "---   search_record_has_ucf: #{search_record_has_ucf}" }
+    Rails.logger.info { "---   old_search_record: #{old_search_record&.id}" }
+    Rails.logger.info { "---   current search_record: #{search_record.id}" }
+
+    Rails.logger.info { "--- initial place ucf_list" }
+    logger.info "---place_ucf:\n #{place.ucf_list.ai(index: true, plain: true)}"
+    Rails.logger.info { "--- initial file ucf_list" }
+    logger.info "---file_ucf:\n #{file.ucf_list.ai}"
+    # logger.info "---file_ucf:\n #{file.ucf_list.ai(index: true, plain: true)}"
+
+    # Case 0: No change
+    return unless file_in_ucf_list || search_record_has_ucf
+
+    safe_update_ucf!(place, file) do
+      if file_in_ucf_list && search_record_has_ucf
+        handle_add_ucf(place, file, file_key, old_search_record)
+
+      elsif file_in_ucf_list && !search_record_has_ucf
+        handle_remove_ucf(place, file, file_key, old_search_record)
+
+      elsif !file_in_ucf_list && search_record_has_ucf
+        handle_new_ucf(place, file, file_key)
       end
-      file.ucf_list << search_record.id
-      file.ucf_updated = DateTime.now.to_date
-      file.save
-      place.save
     end
   end
 
@@ -1466,6 +1523,90 @@ class Freereg1CsvEntry
         self[attr] = sanitized
       end
     end
+  end
+
+  private
+
+  def safe_update_ucf!(place, file)
+    # Save original state for rollback
+    original_place_list = place.ucf_list.deep_dup
+    original_file_list  = file.ucf_list&.dup || []
+
+    begin
+      yield  # perform the mutation block
+
+      file.ucf_updated = Date.today
+      file.save!
+      place.save!
+
+    rescue => e
+      # Rollback on failure
+      Rails.logger.error "safe_update_ucf! rollback triggered: #{e.class} - #{e.message}"
+      
+      place.ucf_list = original_place_list
+      file.ucf_list  = original_file_list
+
+      place.save
+      file.save
+
+      raise e
+    end
+  end
+
+  def handle_add_ucf(place, file, file_key, old_search_record)
+    return if place.ucf_list[file_key].include?(search_record.id.to_s)
+
+    cleanup_old_ids(place, file, file_key, old_search_record)
+
+    place.ucf_list[file_key] << search_record.id
+    file.ucf_list ||= []
+    file.ucf_list << search_record.id
+
+    update_and_save(file, place, "Case A: Added UCF record")
+  end
+
+  def handle_remove_ucf(place, file, file_key, old_search_record)
+    cleanup_old_ids(place, file, file_key, old_search_record)
+    place.ucf_list[file_key].delete(search_record.id.to_s)
+    file.ucf_list ||= []
+    file.ucf_list&.delete(search_record.id.to_s)
+
+    update_and_save(file, place, "Case B: Removed UCF record")
+  end
+
+  def handle_new_ucf(place, file, file_key)
+    place.ucf_list[file_key] = [search_record.id]
+    file.ucf_list ||= []
+    file.ucf_list << search_record.id
+
+    update_and_save(file, place, "Case C: Created new UCF list")
+  end
+
+  def cleanup_old_ids(place, file, file_key, old_search_record)
+    return unless old_search_record.present?
+
+    place.ucf_list[file_key].delete(old_search_record.id.to_s)
+    file.ucf_list&.delete(old_search_record.id.to_s)
+
+    Rails.logger.info { "---   cleanup_old_ids removed #{old_search_record.id}" }
+  end
+
+  def update_and_save(file, place, message)
+    file.ucf_updated = Date.today
+
+    # --- Recalculate place counters and timestamp ---
+    place.ucf_list_record_count = place.ucf_record_ids.size
+    place.ucf_list_file_count   = place.ucf_list.keys.size
+    place.ucf_list_updated_at   = DateTime.now
+
+    # --- Persist changes ---
+    file.save
+    place.save
+
+    Rails.logger.info { "---✔ #{message} - updated place ucf_list" }
+    logger.info "---place_ucf:\n #{place.ucf_list.ai(index: true, plain: true)}"
+    Rails.logger.info { "---✔ #{message} - updated file ucf_list" }
+    logger.info "---file_ucf:\n #{file.ucf_list.ai(index: true, plain: true)}"
   end
 
 end
