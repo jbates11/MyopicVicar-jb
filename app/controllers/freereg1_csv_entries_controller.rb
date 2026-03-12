@@ -93,27 +93,69 @@ class Freereg1CsvEntriesController < ApplicationController
     redirect_to(freereg1_csv_entry_path(@freereg1_csv_entry)) && return
   end
 
-  def destroy
-    @freereg1_csv_entry = Freereg1CsvEntry.find(params[:id]) if params[:id].present?
+  # def destroy
+  #   @freereg1_csv_entry = Freereg1CsvEntry.find(params[:id]) if params[:id].present?
 
-    unless Freereg1CsvEntry.valid_freereg1_csv_entry?(@freereg1_csv_entry)
-      message = 'The entry was not correctly linked. Have your coordinator contact the web master'
-      redirect_back(fallback_location: new_manage_resource_path, notice: message) && return
+  #   unless Freereg1CsvEntry.valid_freereg1_csv_entry?(@freereg1_csv_entry)
+  #     message = 'The entry was not correctly linked. Have your coordinator contact the web master'
+  #     redirect_back(fallback_location: new_manage_resource_path, notice: message) && return
+  #   end
+  #   @freereg1_csv_file = @freereg1_csv_entry.freereg1_csv_file
+
+  #   redirect_back(fallback_location: new_manage_resource_path, notice: 'File is currently awaiting processing and should not be edited') && return unless @freereg1_csv_file.can_we_edit?
+  #   @freereg1_csv_entry.clean_up_ucf_list
+  #   @freereg1_csv_file.freereg1_csv_entries.delete(@freereg1_csv_entry)
+  #   @freereg1_csv_entry.destroy
+  #   @freereg1_csv_file.update_statistics_and_access(session[:my_own])
+  #   flash[:notice] = 'The deletion of the entry was successful and the batch is locked'
+  #   redirect_to freereg1_csv_file_path(@freereg1_csv_file)
+  # end
+
+  def destroy
+    # 1. Guard against missing params
+    if params[:id].blank?
+      Rails.logger.warn("FREEREG:CSV_ENTRY:DESTROY Attempted to delete with missing ID parameter")
+      redirect_back(fallback_location: new_manage_resource_path, notice: 'The entry ID was missing.') && return
     end
+
+    # 2. Find the entry safely to avoid Mongoid::Errors::DocumentNotFound exception
+    @freereg1_csv_entry = Freereg1CsvEntry.find_by(id: params[:id])
+
+    # 3. Guard against missing or incorrectly linked entries
+    unless Freereg1CsvEntry.valid_freereg1_csv_entry?(@freereg1_csv_entry)
+      Rails.logger.warn("FREEREG:CSV_ENTRY:DESTROY Invalid or incorrectly linked entry. ID: #{params[:id]}")
+      redirect_back(fallback_location: new_manage_resource_path, notice: 'The entry was not correctly linked. Have your coordinator contact the web master') && return
+    end
+
     @freereg1_csv_file = @freereg1_csv_entry.freereg1_csv_file
 
-    redirect_back(fallback_location: new_manage_resource_path, notice: 'File is currently awaiting processing and should not be edited') && return unless @freereg1_csv_file.can_we_edit?
-    @freereg1_csv_entry.clean_up_ucf_list
-    @freereg1_csv_file.freereg1_csv_entries.delete(@freereg1_csv_entry)
-    @freereg1_csv_entry.destroy
-    @freereg1_csv_file.update_statistics_and_access(session[:my_own])
-    flash[:notice] = 'The deletion of the entry was successful and the batch is locked'
-    redirect_to freereg1_csv_file_path(@freereg1_csv_file)
+    # 4. Guard against uneditable files (e.g., locked or processing)
+    unless @freereg1_csv_file.can_we_edit?
+      Rails.logger.warn("FREEREG:CSV_ENTRY:DESTROY Attempted to delete entry from uneditable file. File ID: #{@freereg1_csv_file.id}")
+      redirect_back(fallback_location: new_manage_resource_path, notice: 'File is currently awaiting processing and should not be edited') && return
+    end
+
+    # 5. Proceed with controlled deletion
+    Rails.logger.info("FREEREG:CSV_ENTRY:DESTROY Deleting entry ID: #{@freereg1_csv_entry.id} from file ID: #{@freereg1_csv_file.id} by User/Session: #{session[:my_own]}")
+
+    begin
+      @freereg1_csv_entry.clean_up_ucf_list
+      @freereg1_csv_file.freereg1_csv_entries.delete(@freereg1_csv_entry)
+      @freereg1_csv_entry.destroy
+
+      @freereg1_csv_file.update_statistics_and_access(session[:my_own])
+
+      flash[:notice] = 'The deletion of the entry was successful and the batch is locked'
+      redirect_to freereg1_csv_file_path(@freereg1_csv_file)
+    rescue StandardError => e
+      Rails.logger.error("FREEREG:CSV_ENTRY:DESTROY Unexpected error deleting entry ID #{params[:id]}: #{e.message}")
+      redirect_back(fallback_location: new_manage_resource_path, notice: 'An unexpected error occurred while deleting the entry.')
+    end
   end
 
   def display_info
     @freereg1_csv_file = @freereg1_csv_entry.blank? ? Freereg1CsvFile.find(session[:freereg1_csv_file_id]) : @freereg1_csv_entry.freereg1_csv_file
-    
+
     @freereg1_csv_file_id = @freereg1_csv_file.id
     @freereg1_csv_file_name = @freereg1_csv_file.file_name
     @file_owner = @freereg1_csv_file.userid
@@ -129,7 +171,7 @@ class Freereg1CsvEntriesController < ApplicationController
     @county = @place.county
     @chapman_code = @place.chapman_code
     @place_name = @place.place_name
-    
+
     @user = get_user
     @first_name = @user.person_forename if @user.present?
   end
@@ -143,7 +185,7 @@ class Freereg1CsvEntriesController < ApplicationController
     end
     @freereg1_csv_file = @freereg1_csv_entry.freereg1_csv_file
     redirect_back(fallback_location: new_manage_resource_path, notice: 'File is currently awaiting processing and should not be edited') && return unless @freereg1_csv_file.can_we_edit?
-    
+
     display_info
 
     @embargo_permitted = (session[:role] == 'system_administrator' || session[:role] == 'executive_director') ? true : false
@@ -152,7 +194,7 @@ class Freereg1CsvEntriesController < ApplicationController
 
     session[:freereg1_csv_entry_id] = @freereg1_csv_entry._id
     session[:zero_listing] = true if params[:zero_listing].present?
-    
+
     @freereg1_csv_entry.multiple_witnesses.build if @freereg1_csv_entry.multiple_witnesses.count < FreeregOptionsConstants::MAXIMUM_WINESSES
   end
 
@@ -282,11 +324,11 @@ class Freereg1CsvEntriesController < ApplicationController
 
   #   @freereg1_csv_entry.check_and_correct_county
   #   @freereg1_csv_entry.check_year
-    
+
   #   # search_version = calculate_software_version
   #   place, _church, _register = get_location_from_file(@freereg1_csv_file)
   #   # SearchRecord.update_create_search_record(@freereg1_csv_entry, search_version, place)
-    
+
   #   update_file_statistics(place)
   #   # @freereg1_csv_file.update_statistics_and_access(session[:my_own])
 
@@ -294,7 +336,7 @@ class Freereg1CsvEntriesController < ApplicationController
   #   @freereg1_csv_entry.update_place_ucf_list(place, @freereg1_csv_file, old_search_record)
 
   #   flash[:notice] = 'The change in entry contents was successful, the file is now locked against replacement until it has been downloaded.'
-    
+
   #   if session[:zero_listing]
   #     session.delete(:zero_listing)
   #     redirect_to freereg1_csv_entry_path(@freereg1_csv_entry, zero_listing: 'true')
