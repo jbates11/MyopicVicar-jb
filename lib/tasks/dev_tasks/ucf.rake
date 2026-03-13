@@ -1,12 +1,13 @@
 namespace :ucf do
-
   # ============================================================================
   # Rake task to generate UCF statistics
-  # 
+  # ============================================================================
+  #
+  # rake ucf:ucf_statistics
+  #
   # ============================================================================
   desc "Generate UCF statistics report"
   task :ucf_statistics => :environment do
-
     places = Place.where("ucf_list" => { "$exists" => true, "$ne" => {} })
 
     stats = {
@@ -39,8 +40,11 @@ namespace :ucf do
     puts JSON.pretty_generate(stats)
   end
 
+
   # ============================================================================
   # Task name: ucf:validate_ucf_lists
+  # ============================================================================
+  #
   # Arguments:
   #   limit       → how many Place records to check
   #   fix         → whether to automatically fix issues ("fix")
@@ -51,16 +55,15 @@ namespace :ucf do
   #   - can auto-fix issues
   #
   # Dry run
+  # rake ucf:validate_ucf_lists
   # rake ucf:validate_ucf_lists[1000]
   #
   # Fix issues
   # rake ucf:validate_ucf_lists[0,fix]
   #
   # ============================================================================
-
   desc "Validate UCF lists for consistency"
   task :validate_ucf_lists, [:limit, :fix] => [:environment] do |t, args|
-
     limit        = args.limit.to_i
     apply_fixes  = args.fix == "fix"
     issues       = []
@@ -70,29 +73,17 @@ namespace :ucf do
       updated_ucf  = original_ucf.deep_dup
       changed      = false
 
-      #
-      # ---------------------------------------------------------
       # BATCH 1 — Collect all file IDs for this Place
-      # ---------------------------------------------------------
-      #
       file_ids = original_ucf.keys
       existing_files = Freereg1CsvFile.where(:id.in => file_ids).to_a
       existing_file_ids = existing_files.map { |f| f.id.to_s }.to_set
 
-      #
-      # ---------------------------------------------------------
       # BATCH 2 — Collect all record IDs for this Place
-      # ---------------------------------------------------------
-      #
       record_ids = original_ucf.values.flatten
       existing_records = SearchRecord.where(:id.in => record_ids).pluck(:id)
       existing_record_ids = existing_records.map(&:to_s).to_set
 
-      #
-      # ---------------------------------------------------------
       # CHECK 1 — Orphaned file IDs
-      # ---------------------------------------------------------
-      #
       file_ids.each do |file_id|
         unless existing_file_ids.include?(file_id)
           issues << {
@@ -108,11 +99,7 @@ namespace :ucf do
         end
       end
 
-      #
-      # ---------------------------------------------------------
       # CHECK 2 — Orphaned record IDs
-      # ---------------------------------------------------------
-      #
       updated_ucf.each do |file_id, ids|
         # next unless ids.is_a?(Array)
 
@@ -138,7 +125,7 @@ namespace :ucf do
           next
         end
 
-        # --- Orphaned record IDs (Array case) ---
+        # Orphaned record IDs (Array case)
         valid_ids = ids.select { |rid| existing_record_ids.include?(rid) }
 
         if valid_ids.size != ids.size
@@ -158,8 +145,6 @@ namespace :ucf do
         end
       end
 
-      #
-      # ---------------------------------------------------------
       # CHECK 3 — File location mismatch
       # ---------------------------------------------------------
       #
@@ -183,21 +168,13 @@ namespace :ucf do
         end
       end
 
-      #
-      # ---------------------------------------------------------
       # APPLY FIXES (single atomic update)
-      # ---------------------------------------------------------
-      #
       if apply_fixes && changed
         place.set(ucf_list: updated_ucf)
       end
     end
 
-    #
-    # ---------------------------------------------------------
     # WRITE REPORT
-    # ---------------------------------------------------------
-    #
     timestamp = Time.now.to_i
     path = "log/ucf_validation_#{timestamp}.json"
 
@@ -205,8 +182,9 @@ namespace :ucf do
     puts "Found #{issues.size} issues. Report: #{path}"
   end
 
+
   # ============================================================================
-  # DETAILED ORPHAN REPORT - MongoDB Aggregation with Grouping
+  # DETAILED ORPHAN REPORT - MongoDB Aggregation with Grouping - orphaned files only
   # ============================================================================
   #
   # WHY THIS EXISTS:
@@ -220,13 +198,11 @@ namespace :ucf do
   #   rake ucf:validate_ucf_lists_detailed_report
   #
   # ============================================================================
-
   desc "Detailed orphan report with place information"
   task :validate_ucf_lists_detailed_report => :environment do
-    
     puts "\n[UCF:REPORT] Building detailed orphan report...\n"
 
-    # === Extract all file IDs (same aggregation as optimized task) ===
+    # Extract all file IDs (same aggregation as optimized task)
     pipeline = [
       { '$project' => { 'ucf_list' => 1 } },
       { '$project' => { 'file_pairs' => { '$objectToArray' => '$ucf_list' } } },
@@ -235,11 +211,11 @@ namespace :ucf do
     ]
 
     all_referenced_file_ids = Place.collection
-      .aggregate(pipeline)
-      .map { |doc| doc['_id'].to_s }
-      .to_set
+                                   .aggregate(pipeline)
+                                   .map { |doc| doc['_id'].to_s }
+                                   .to_set
 
-    # === Find orphaned files ===
+    # Find orphaned files
     existing_file_ids = Freereg1CsvFile.where(:id.in => all_referenced_file_ids.to_a)
                                        .pluck(:id)
                                        .map(&:to_s)
@@ -256,7 +232,7 @@ namespace :ucf do
       next
     end
 
-    # === Detailed report per orphaned file ===
+    # Detailed report per orphaned file
     puts "[UCF:REPORT] " + "="*70
     puts "[UCF:REPORT] DETAILED ORPHANED FILE REPORT"
     puts "[UCF:REPORT] " + "="*70 + "\n"
@@ -264,26 +240,26 @@ namespace :ucf do
     orphaned_file_ids.each do |orphaned_id|
       # Find all places that reference this orphaned file
       places_with_orphan = Place.where('ucf_list' => { '$exists' => true })
-                               .where("ucf_list.#{orphaned_id}" => { '$exists' => true })
-                               .pluck(:id, :place_name, :chapman_code)
+                                .where("ucf_list.#{orphaned_id}" => { '$exists' => true })
+                                .pluck(:id, :place_name, :chapman_code)
 
       record_count = Place.collection
-        .aggregate([
+                          .aggregate([
           { '$match' => { "ucf_list.#{orphaned_id}" => { '$exists' => true } } },
           { '$project' => { 'records' => { '$size' => "$ucf_list.#{orphaned_id}" } } },
           { '$group' => { '_id' => nil, 'total' => { '$sum' => '$records' } } }
         ])
-        .first&.fetch('total', 0) || 0
+                          .first&.fetch('total', 0) || 0
 
       puts "[UCF:REPORT] File ID: #{orphaned_id}"
       puts "[UCF:REPORT]   Referenced by: #{places_with_orphan.size} places"
       puts "[UCF:REPORT]   Total claimed records: #{record_count}"
       puts "[UCF:REPORT]   Places:"
-      
+
       places_with_orphan.each do |(place_id, place_name, chapman_code)|
         puts "[UCF:REPORT]     - #{place_name} (#{chapman_code}) [#{place_id}]"
       end
-      
+
       puts
     end
 
@@ -291,8 +267,9 @@ namespace :ucf do
     puts "[UCF:REPORT] Report complete.\n"
   end
 
+
   # ============================================================================
-  # OPTIMIZED ORPHAN DETECTION using MongoDB Aggregation
+  # OPTIMIZED ORPHAN DETECTION using MongoDB Aggregation - fix orphaned files only
   # ============================================================================
   #
   # WHY THIS EXISTS:
@@ -318,10 +295,8 @@ namespace :ucf do
   #   rake ucf:validate_ucf_lists_optimized[true]
   #
   # ============================================================================
-
   desc "Detect orphaned UCF file IDs using MongoDB aggregation (optimized)"
   task :validate_ucf_lists_optimized, [:fix] => :environment do |t, args|
-    
     # === STEP 1: Parse arguments ===
     # args[:fix] is a string from command line, convert to boolean
     # "true" or "fix" means apply fixes, anything else = dry run only

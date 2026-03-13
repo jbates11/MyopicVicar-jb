@@ -661,16 +661,24 @@ namespace :foo do
   #   message_file.puts "#{time_process}"
   # end
 
+  # ============================================================================
+  # Task name: freereg:refresh_ucf_lists
+  # Arguments:
+  #   skip       → how many places to skip at the start
+  #   sleep_time → pause between processing places
+  # 
+  # This rake task **refreshes the UCF lists** (Uncertain Character Format lists) for each `Place`. 
+  # It rebuilds them from scratch by scanning all `Freereg1CsvFile` records belonging to that place.
+  #    
+  # rake foo:refresh_ucf_lists
+  # 
+  # rake foo:refresh_ucf_lists[0, 0.5]
+  # 
+  # ============================================================================
+
   desc "Refresh UCF lists on places"
   task :refresh_ucf_lists, [:skip, :sleep_time] => [:environment] do |t, args|
-    # Task name: freereg:refresh_ucf_lists
-    # Arguments:
-    #   skip       → how many places to skip at the start
-    #   sleep_time → pause between processing places
-    # 
-    # This rake task **refreshes the UCF lists** (Uncertain Character Format lists) for each `Place`. 
-    # It rebuilds them from scratch by scanning all `Freereg1CsvFile` records belonging to that place.
-    #    
+
     # Default arguments
     args.with_defaults(skip: 0, sleep_time: 0)
 
@@ -699,11 +707,11 @@ namespace :foo do
 
       #  Iterate through all Freereg1CsvFile files belonging to this place
       Freereg1CsvFile.where(place_name: place.place_name).order(file_name: :asc).no_timeout.each do |file|
-        # Special case: skip known heavy file - place.ucf_list set to empty
-        if file.file_name == "SOMFSJBA.csv" && file.userid == "YvonneScrivener"  # This file has 48,000 entries
-          Rails.logger.warn "Skipping heavy file #{file.file_name} for user #{file.userid}"
-          next
-        end
+        # Special case: skip known heavy file
+        # if file.file_name == "SOMFSJBA.csv" && file.userid == "YvonneScrivener"  # This file has 48,000 entries
+        #   Rails.logger.warn "Skipping heavy file #{file.file_name} for user #{file.userid}"
+        #   next
+        # end
 
         # Log progress
         msg = "#{i}\tUpdating\t#{place.chapman_code}\t#{place.place_name}\t#{file.file_name}"
