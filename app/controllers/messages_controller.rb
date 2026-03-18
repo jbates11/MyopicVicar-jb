@@ -375,8 +375,7 @@ class MessagesController < ApplicationController
       @sent_replies = Message.sent_messages(@reply_messages)
       @message = Message.new(nature: @respond_to_message.nature, syndicate: @respond_to_message.syndicate,
                              userid: @user.userid, message_time: Time.now)
-      raw_userids = array_of_userids
-      @userids = raw_userids.is_a?(Array) ? raw_userids : []
+      @userids = array_of_userids
     else
       # create
       session[:message_base] == 'syndicate' ? syndicate = session[:syndicate] : syndicate = nil
