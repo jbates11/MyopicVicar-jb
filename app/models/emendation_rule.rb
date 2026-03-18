@@ -1,6 +1,7 @@
 class EmendationRule
   include Mongoid::Document
   include Mongoid::Timestamps
+
   field :original, type: String
   field :replacement, type: String
   field :gender, type: String #m=male, f=female (nil if rule applies to both)
@@ -10,12 +11,10 @@ class EmendationRule
   belongs_to :emendation_type, index: true
 
   class << self
-    def all_original_by_replacement(replacement)
-      originals = []
-      EmendationRule.where(replacement:  replacement ).to_a.each do |emendation_rule_original|
-        originals << emendation_rule_original.original
-      end
-      originals
+    def all_original_by_replacement(req_replacement)
+      # Instead of pulling the whole document and iterating through array,
+      # we pluck the specific field we want directly at the DB level.
+      EmendationRule.where(replacement: req_replacement).pluck(:original)
     end
 
     def sort_by_initial_letter(replacement_array)
@@ -25,6 +24,7 @@ class EmendationRule
       end
       hash_letter.sort.to_h
     end
+
   end
 
 end
