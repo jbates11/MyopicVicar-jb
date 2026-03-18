@@ -20,6 +20,11 @@ MyopicVicar::Application.routes.draw do
   resources :reminder_to_donate
   resources :donate_cta_feedback
 
+  # Catch-all route for dynamic pages copied from Refinery
+  # This must come after specific page routes (donate, volunteer)
+  # Matches paths like /about, /help/getting-started, etc.
+  # The controller will check if the view file exists and handle 404 if not
+
   get 'tna_change_logs/:id/download(.:format)', :to => 'tna_change_logs#download', :as => :download_tna_change_logs
   resources :tna_change_logs
 
@@ -647,6 +652,7 @@ MyopicVicar::Application.routes.draw do
   get 'gap_reasons/:id/index(.:format)', :to => 'gap_reasons#index', :as => :index_gap_reason
   resources :gap_reasons
 
+  # Serve assets_freereg resources directly (bypassing asset pipeline)
 
 
   # This line mounts Refinery's routes at the root of your application.
@@ -656,6 +662,8 @@ MyopicVicar::Application.routes.draw do
   # We ask that you don't use the :as option here, as Refinery relies on it being the default of "refinery"
 
   mount Refinery::Core::Engine, :at => '/cms'
+
+  get '*path', to: 'pages#show', as: :page, format: false
 
   #ActiveAdmin.routes(self)
 
