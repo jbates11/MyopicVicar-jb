@@ -569,8 +569,14 @@ MyopicVicar::Application.routes.draw do
 
   resources :emendation_types
 
-  resources :emendation_rules
+  # resources :emendation_rules
 
+  resources :emendation_rules do
+    collection do
+      get :forename_abbreviations
+    end
+  end
+  
   resources :search_names
 
 
