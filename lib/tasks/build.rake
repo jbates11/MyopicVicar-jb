@@ -619,7 +619,7 @@ namespace :build do
         end
         while PhysicalFile.waiting.exists?
           NewFreeregCsvUpdateProcessor.activate_project(args.search_record, args.type, args.force, args.range)
-          sleep(300)
+          # sleep(300)
         end
       end
       p 'FREEREG:CSV_PROCESSING: removing rake lock file'
@@ -698,7 +698,7 @@ namespace :build do
         p "FREECEN:CSV_PROCESSING: Created rake lock file #{rake_lock_file} and processing files"
         while PhysicalFile.waiting.exists?
           FreecenCsvProcessor.activate_project(args.search_record, args.type, args.force, args.range, args.field, args.processing)
-          sleep(300)
+          # sleep(300)
         end
 
       end
