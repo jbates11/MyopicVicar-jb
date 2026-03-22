@@ -110,18 +110,24 @@ class UserMailer < ActionMailer::Base
     when 'freereg'
       # Determine the county of the uploaded file
       file_county = @batch.present? ? @batch.county : extract_chapman_code_from_file_name(batch)[0]
-      
+      Rails.logger.info("\n\n----file_county-chapman_code: #{file_county.inspect}")
+
       # Check if the file's county is within the transcriber's county_groups
       user_county_groups = @userid.county_groups || []
-      
+      Rails.logger.info("----user_county_groups: #{user_county_groups.inspect}")
+
       if user_county_groups.include?(file_county)
         # Scenario 1: Matches county_groups
+        Rails.logger.info("----Scenario 1: Matches county_groups")
+
         errors = @batch.present? ? @batch.error : 0
         datemin = @batch.present? ? @batch.datemin : ''
         datemax = @batch.present? ? @batch.datemax : ''
         subject = "#{@userid.userid}/#{batch} processed with #{errors} errors over period #{datemin}-#{datemax}"
       else
         # Scenario 2: Does NOT match county_groups (Cross-County Upload)
+        Rails.logger.info("----Scenario 2: Does NOT match county_groups (Cross-County Upload)")
+
         subject = "* * * ALERT! Data was uploaded to your county from: #{@userid.userid}/#{batch}. * * *"
         
         # Prepend the alert text to the body message
@@ -132,6 +138,7 @@ class UserMailer < ActionMailer::Base
       subject = "#{@userid.userid} processed #{batch} at #{Time.now} "
     end
     
+    Rails.logger.info("----adjust_email_recipients")
     adjust_email_recipients(subject)
   end
 
