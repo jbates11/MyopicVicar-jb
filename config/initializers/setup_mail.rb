@@ -1,6 +1,6 @@
 require 'development_mail_interceptor'
 if Rails.env.development?
-  ActionMailer::Base.register_interceptor(DevelopmentMailInterceptor)
+  # ActionMailer::Base.register_interceptor(DevelopmentMailInterceptor)
   case Rails.application.config.website
   when 'https://test2.freereg.org.uk'
     ActionMailer::Base.delivery_method = :sendmail
