@@ -70,12 +70,12 @@ class UserMailer < ActionMailer::Base
 
     @syndicate_coordinator, @syndicate_coordinator_email = syndicate_coordinator_email_lookup(@userid)
     @county_coordinator, @county_coordinator_email = county_coordinator_email_lookup(batch, @userid)
-    
+
     # Use the safe navigation operator and fallback to the 'user' string
     uid = @userid&.userid || user
     subject = "#{uid}/#{batch} processing encountered serious problem at #{Time.now}"
     # subject = "#{@userid.userid}/#{batch} processing encountered serious problem at #{Time.now}"
-    
+
     adjust_email_recipients(subject)
   end
 
@@ -84,10 +84,10 @@ class UserMailer < ActionMailer::Base
   #   @message = File.read(message)
   #   @userid, @userid_email = user_email_lookup(user)
   #   @batch = Freereg1CsvFile.where(file_name: batch, userid: user).first
-  # 
+  #
   #   @syndicate_coordinator, @syndicate_coordinator_email = syndicate_coordinator_email_lookup(@userid)
   #   @county_coordinator, @county_coordinator_email = county_coordinator_email_lookup(batch, @userid)
-  # 
+  #
   #   case appname.downcase
   #   when 'freereg'
   #     subject = "#{@userid.userid}/#{batch} processed at #{Time.now} with #{@batch.error unless @batch.nil?} errors over period #{@batch.datemin unless @batch.nil?}-#{@batch.datemax unless @batch.nil?}"
@@ -102,10 +102,10 @@ class UserMailer < ActionMailer::Base
     @message = File.read(message)
     @userid, @userid_email = user_email_lookup(user)
     @batch = Freereg1CsvFile.where(file_name: batch, userid: user).first
-    
+
     @syndicate_coordinator, @syndicate_coordinator_email = syndicate_coordinator_email_lookup(@userid)
     @county_coordinator, @county_coordinator_email = county_coordinator_email_lookup(batch, @userid)
-    
+
     case appname.downcase
     when 'freereg'
       # Determine the county of the uploaded file
@@ -119,6 +119,7 @@ class UserMailer < ActionMailer::Base
       if user_county_groups.include?(file_county)
         # Scenario 1: Matches county_groups
         Rails.logger.info("----Scenario 1: Matches county_groups")
+        @matches_county_group = true
 
         errors = @batch.present? ? @batch.error : 0
         datemin = @batch.present? ? @batch.datemin : ''
@@ -127,17 +128,30 @@ class UserMailer < ActionMailer::Base
       else
         # Scenario 2: Does NOT match county_groups (Cross-County Upload)
         Rails.logger.info("----Scenario 2: Does NOT match county_groups (Cross-County Upload)")
+        @matches_county_group = false
 
         subject = "* * * ALERT! Data was uploaded to your county from: #{@userid.userid}/#{batch}. * * *"
-        
+
         # Prepend the alert text to the body message
-        alert_text = "<p>ALERT! This file was uploaded to your county by a UserID from a county group not associated with your county.<\p>"
+        alert_text = "<p>ALERT! This file was uploaded to your county by userid: #{@userid.userid} from a county group not associated with your county.<\p>"
         @message = alert_text + @message
       end
+
+      # check for eligibility (i.e. has a valid email address)
+      user = @userid
+      @eligible = user.present? && user.active && user.email_address_valid &&
+        user.registration_completed(user) && !user.no_processing_messages
+
+      if !@eligible
+        # Prepend the alert text to the body message
+        alert_text = "<p>ALERT! Userid: #{@userid.userid} does not have a valid email address.<\p>"
+        @message = alert_text + @message
+      end
+
     when 'freecen'
-      subject = "#{@userid.userid} processed #{batch} at #{Time.now} "
+      subject = "#{@userid.userid} processed #{batch} at #{Time.now}"
     end
-    
+
     Rails.logger.info("----adjust_email_recipients")
     adjust_email_recipients(subject)
   end
@@ -655,22 +669,55 @@ class UserMailer < ActionMailer::Base
   def adjust_email_recipients(message)
     user = @userid
     # nil-safe check for eligibility
-    eligible = user.present? && user.active && user.email_address_valid &&
-    user.registration_completed(user) && !user.no_processing_messages
-    
+    # eligible = user.present? && user.active && user.email_address_valid &&
+              #  user.registration_completed(user) && !user.no_processing_messages
+
+    Rails.logger.info("\n\n----user.present?: #{user.present?.inspect}")
+    Rails.logger.info("----user.active?: #{user.active.inspect}")
+    Rails.logger.info("----user.email_address_valid?: #{user.email_address_valid.inspect}")
+    Rails.logger.info("----user.registration_completed(user)?: #{user.registration_completed(user).inspect}")
+    Rails.logger.info("----!user.no_processing_messages?: #{!user.no_processing_messages.inspect}")
+    Rails.logger.info("----user eligible?: #{@eligible.inspect}")
+
     # Check if user exists FIRST, before calling attributes on it
-    if eligible
-      cc_list = [@syndicate_coordinator_email, @county_coordinator_email].uniq
-      mail(to: @userid_email, cc: cc_list, subject: message)
+    if @eligible
+      @person_forename = user.person_forename
+
+      if @matches_county_group
+        cc_list = [@syndicate_coordinator_email, @county_coordinator_email].uniq
+        mail(to: @userid_email, cc: cc_list, subject: message)
+      else
+        cc_list = [@userid_email, @syndicate_coordinator_email].uniq
+        mail(to:  @county_coordinator_email, cc: cc_list, subject: message)
+      end
+
     else
+      Rails.logger.info("\n----county_coordinator: #{@county_coordinator.inspect}")
+      Rails.logger.info("----syndicate_coordinator: #{@syndicate_coordinator.inspect}")
+      
+      @person_forename = @county_coordinator&.person_forename ||''
+      Rails.logger.info("----person_forename: #{@person_forename.inspect}")
 
       # Scenario: Invalid User - Sends to Syndicate (Exec Lead) and CCs County
-      if @county_coordinator == @syndicate_coordinator
-        mail(to: @syndicate_coordinator_email, subject: message)
+
+      if @matches_county_group
+        @person_forename = @syndicate_coordinator&.person_forename ||''
+        if @county_coordinator == @syndicate_coordinator
+          mail(to: @syndicate_coordinator_email, subject: message)
+        else
+          mail(to: @syndicate_coordinator_email, cc: @county_coordinator_email,
+              subject: message)
+        end
       else
-        mail(to: @syndicate_coordinator_email, cc: @county_coordinator_email, 
-            subject: message)
+        @person_forename = @county_coordinator&.person_forename ||''
+        if @county_coordinator == @syndicate_coordinator
+          mail(to: @county_coordinator_email, subject: message)
+        else
+          mail(to: @county_coordinator_email, cc: @syndicate_coordinator_email,
+              subject: message)
+        end
       end
+
     end
   end
 
@@ -913,7 +960,7 @@ class UserMailer < ActionMailer::Base
   def lookup_by_county_code(code)
     county = County.where(chapman_code: code).first
     coordinator = UseridDetail.where(userid: county&.county_coordinator).first
-    
+
     if coordinator&.active && coordinator&.email_address_valid
       email = "#{coordinator.person_forename} #{coordinator.person_surname} " \
               "<#{coordinator.email_address}>"
