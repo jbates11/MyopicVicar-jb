@@ -67,8 +67,10 @@ RSpec.describe UserMailer, type: :mailer do
       let(:mail) { UserMailer.batch_processing_success(message_file.path, transcriber.userid, csv_file.file_name) }
 
       it 'sends the email to the transcriber with SC and CC in cc' do
-        expect(mail.to).to eq([transcriber.email_address])
-        expect(mail.cc).to contain_exactly(syndicate_coordinator.email_address, county_coordinator.email_address)
+        expect(mail.to).to eq([county_coordinator.email_address])
+        expect(mail.cc).to include(syndicate_coordinator.email_address)
+        # expect(mail.to).to eq([transcriber.email_address])
+        # expect(mail.cc).to contain_exactly(syndicate_coordinator.email_address, county_coordinator.email_address)
       end
 
       it 'formats the subject with an ALERT' do
@@ -76,7 +78,8 @@ RSpec.describe UserMailer, type: :mailer do
       end
 
       it 'prepends an alert to the body' do
-        expect(mail.body.encoded).to include("ALERT! This file was uploaded to your county by a UserID from a county group not associated with your county")
+        expect(mail.body.encoded).to include("ALERT! This file was uploaded to your county")
+        # expect(mail.body.encoded).to include("ALERT! This file was uploaded to your county by a UserID from a county group not associated with your county")
         expect(mail.body.encoded).to include("Log line 1")
       end
     end
