@@ -97,63 +97,78 @@ class UserMailer < ActionMailer::Base
   #   adjust_email_recipients(subject)
   # end
 
-  def batch_processing_success(message, user, batch)
-    @appname = appname
-    @message = File.read(message)
-    @userid, @userid_email = user_email_lookup(user)
-    @batch = Freereg1CsvFile.where(file_name: batch, userid: user).first
+  # def batch_processing_success(message, user, batch)
+  #   @appname = appname
+  #   @message = File.read(message)
+  #   @userid, @userid_email = user_email_lookup(user)
+  #   @batch = Freereg1CsvFile.where(file_name: batch, userid: user).first
 
-    @syndicate_coordinator, @syndicate_coordinator_email = syndicate_coordinator_email_lookup(@userid)
-    @county_coordinator, @county_coordinator_email = county_coordinator_email_lookup(batch, @userid)
+  #   @syndicate_coordinator, @syndicate_coordinator_email = syndicate_coordinator_email_lookup(@userid)
+  #   @county_coordinator, @county_coordinator_email = county_coordinator_email_lookup(batch, @userid)
 
-    case appname.downcase
-    when 'freereg'
-      # Determine the county of the uploaded file
-      file_county = @batch.present? ? @batch.county : extract_chapman_code_from_file_name(batch)[0]
-      Rails.logger.info("\n\n----file_county-chapman_code: #{file_county.inspect}")
+  #   case appname.downcase
+  #   when 'freereg'
+  #     # Determine the county of the uploaded file
+  #     file_county = @batch.present? ? @batch.county : extract_chapman_code_from_file_name(batch)[0]
+  #     Rails.logger.info("\n\n----file_county-chapman_code: #{file_county.inspect}")
 
-      # Check if the file's county is within the transcriber's county_groups
-      user_county_groups = @userid.county_groups || []
-      Rails.logger.info("----user_county_groups: #{user_county_groups.inspect}")
+  #     # Check if the file's county is within the transcriber's county_groups
+  #     user_county_groups = @userid.county_groups || []
+  #     Rails.logger.info("----user_county_groups: #{user_county_groups.inspect}")
 
-      if user_county_groups.include?(file_county)
-        # Scenario 1: Matches county_groups
-        Rails.logger.info("----Scenario 1: Matches county_groups")
-        @matches_county_group = true
+  #     if user_county_groups.include?(file_county)
+  #       # Scenario 1: Matches county_groups
+  #       Rails.logger.info("----Scenario 1: Matches county_groups")
+  #       @matches_county_group = true
 
-        errors = @batch.present? ? @batch.error : 0
-        datemin = @batch.present? ? @batch.datemin : ''
-        datemax = @batch.present? ? @batch.datemax : ''
-        subject = "#{@userid.userid}/#{batch} processed with #{errors} errors over period #{datemin}-#{datemax}"
-      else
-        # Scenario 2: Does NOT match county_groups (Cross-County Upload)
-        Rails.logger.info("----Scenario 2: Does NOT match county_groups (Cross-County Upload)")
-        @matches_county_group = false
+  #       errors = @batch.present? ? @batch.error : 0
+  #       datemin = @batch.present? ? @batch.datemin : ''
+  #       datemax = @batch.present? ? @batch.datemax : ''
+  #       subject = "#{@userid.userid}/#{batch} processed with #{errors} errors over period #{datemin}-#{datemax}"
+  #     else
+  #       # Scenario 2: Does NOT match county_groups (Cross-County Upload)
+  #       Rails.logger.info("----Scenario 2: Does NOT match county_groups (Cross-County Upload)")
+  #       @matches_county_group = false
 
-        subject = "* * * ALERT! Data was uploaded to your county from: #{@userid.userid}/#{batch}. * * *"
+  #       subject = "* * * ALERT! Data was uploaded to your county from: #{@userid.userid}/#{batch}. * * *"
 
-        # Prepend the alert text to the body message
-        alert_text = "<p>ALERT! This file was uploaded to your county by userid: #{@userid.userid} from a county group not associated with your county.<\p>"
-        @message = alert_text + @message
-      end
+  #       # Prepend the alert text to the body message
+  #       alert_text = "<p>ALERT! This file was uploaded to your county by userid: #{@userid.userid} from a county group not associated with your county.<\p>"
+  #       @message = alert_text + @message
+  #     end
 
-      # check for eligibility (i.e. has a valid email address)
-      user = @userid
-      @eligible = user.present? && user.active && user.email_address_valid &&
-        user.registration_completed(user) && !user.no_processing_messages
+  #     # check for eligibility (i.e. has a valid email address)
+  #     user = @userid
+  #     @eligible = user.present? && user.active && user.email_address_valid &&
+  #       user.registration_completed(user) && !user.no_processing_messages
 
-      if !@eligible
-        # Prepend the alert text to the body message
-        alert_text = "<p>ALERT! Userid: #{@userid.userid} does not have a valid email address.<\p>"
-        @message = alert_text + @message
-      end
+  #     if !@eligible
+  #       # Prepend the alert text to the body message
+  #       alert_text = "<p>ALERT! Userid: #{@userid.userid} does not have a valid email address.<\p>"
+  #       @message = alert_text + @message
+  #     end
 
-    when 'freecen'
-      subject = "#{@userid.userid} processed #{batch} at #{Time.now}"
-    end
+  #   when 'freecen'
+  #     subject = "#{@userid.userid} processed #{batch} at #{Time.now}"
+  #   end
 
-    Rails.logger.info("----adjust_email_recipients")
-    adjust_email_recipients(subject)
+  #   Rails.logger.info("----adjust_email_recipients")
+  #   adjust_email_recipients(subject)
+  # end
+
+  def batch_processing_success(message_path, user, batch)
+    result = MailRoutingPipeline.new(
+      message_path: message_path,
+      user: user,
+      batch_name: batch,
+      appname: appname
+    ).call
+
+    @appname = appname.to_s.downcase 
+    @message = result.message
+    @person_forename = result.person_forename
+
+    mail(to: result.to, cc: result.cc, subject: result.subject)
   end
 
   def communicate_github_issue_creation(feedback)
@@ -668,7 +683,7 @@ class UserMailer < ActionMailer::Base
 
   def adjust_email_recipients(message)
     user = @userid
-    # nil-safe check for eligibility
+    # nil-safe check for eligibility - valid_email_address
     # eligible = user.present? && user.active && user.email_address_valid &&
               #  user.registration_completed(user) && !user.no_processing_messages
 
