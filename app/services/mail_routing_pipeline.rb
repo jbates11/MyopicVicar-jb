@@ -45,11 +45,11 @@ class MailRoutingPipeline
     StructuredLogging.info(
       event: "pipeline_start",
       message: "Mail routing pipeline started",
-      context: { 
-        batch: @batch_name, 
-        userid: @user&.userid, 
-        message_path: @message_path, 
-        appname: @appname, 
+      context: {
+        batch: @batch_name,
+        userid: @user&.userid,
+        message_path: @message_path,
+        appname: @appname,
         dry_run: @dry_run }
     )
 
@@ -128,8 +128,6 @@ class MailRoutingPipeline
       person_forename: routing.person_forename
     )
   end
-
-
 
   # ---------------------------------------------------------------------------
   # Internal workflow
@@ -264,7 +262,6 @@ class MailRoutingPipeline
     fallback_email       = syndicate_result.role == "fallback" ? syndicate_result.email : nil
     fallback_forename    = syndicate_result.role == "fallback" ? "" : nil
 
-
     to = nil
     cc = []
     person_forename = nil
@@ -385,7 +382,7 @@ class MailRoutingPipeline
     # ---------------------------------------------------------
     # Final routing object
     # ---------------------------------------------------------
-    
+
     # Ensure each person receives only one email
     deduped = deduplicate_routing(to: to, cc: cc)
 
@@ -407,10 +404,10 @@ class MailRoutingPipeline
     normalized_to = normalize_email(to)
 
     unique_cc = cc
-      .map(&:to_s)
-      .map(&:strip)
-      .uniq { |email| normalize_email(email) }
-      .reject { |email| normalize_email(email) == normalized_to }
+                .map(&:to_s)
+                .map(&:strip)
+                .uniq { |email| normalize_email(email) }
+                .reject { |email| normalize_email(email) == normalized_to }
 
     { to: to, cc: unique_cc }
   end
@@ -420,6 +417,7 @@ class MailRoutingPipeline
   # --------------------------------------------------------------------------
   def build_friendly_email(forename, surname, email)
     return nil unless email.present?
+
     "#{forename} #{surname} <#{email}>"
   end
 
