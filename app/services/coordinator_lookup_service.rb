@@ -25,16 +25,15 @@ class CoordinatorLookupService
 
     # Priority order:
     # 1. County coordinator
-    # 2. Syndicate coordinator
-    # 3. Exec lead
-    # 4. App-specific manager
-    # 5. Hardcoded fallback
+    # 2. Exec lead
+    # 3. App-specific manager
+    # 4. Hardcoded fallback
 
     lookup_county_coordinator ||
-      lookup_syndicate_coordinator ||
-      lookup_exec_lead ||
-      lookup_app_manager ||
+    lookup_app_manager ||
+    lookup_exec_lead ||
       fallback_result
+
   end
 
   # ---------------------------------------------------------------------------
@@ -66,42 +65,26 @@ class CoordinatorLookupService
   # ---------------------------------------------------------------------------
   # SYNDICATE COORDINATOR
   # ---------------------------------------------------------------------------
-  def lookup_syndicate_coordinator
-    return nil unless @syndicate_code.present?
+  # def lookup_syndicate_coordinator
+  #   return nil unless @syndicate_code.present?
 
-    syndicate = Syndicate.where(syndicate_code: @syndicate_code).first
-    return nil unless syndicate.present?
+  #   syndicate = Syndicate.where(syndicate_code: @syndicate_code).first
+  #   return nil unless syndicate.present?
 
-    coordinator_id = syndicate.syndicate_coordinator
-    return nil unless coordinator_id.present?
+  #   coordinator_id = syndicate.syndicate_coordinator
+  #   return nil unless coordinator_id.present?
 
-    coordinator = UseridDetail.where(userid: coordinator_id).first
-    return nil unless valid_coordinator?(coordinator)
+  #   coordinator = UseridDetail.where(userid: coordinator_id).first
+  #   return nil unless valid_coordinator?(coordinator)
 
-    StructuredLogging.info(
-      event: "coordinator_lookup",
-      message: "Using syndicate coordinator",
-      context: { coordinator: coordinator.userid }
-    )
+  #   StructuredLogging.info(
+  #     event: "coordinator_lookup",
+  #     message: "Using syndicate coordinator",
+  #     context: { coordinator: coordinator.userid }
+  #   )
 
-    build_result(coordinator, "syndicate")
-  end
-
-  # ---------------------------------------------------------------------------
-  # EXEC LEAD (FR Exec Lead)
-  # ---------------------------------------------------------------------------
-  def lookup_exec_lead
-    exec = UseridDetail.userid("FR Exec Lead").first
-    return nil unless valid_coordinator?(exec)
-
-    StructuredLogging.warn(
-      event: "coordinator_lookup_fallback_exec",
-      message: "Falling back to Exec Lead",
-      context: { exec: exec.userid }
-    )
-
-    build_result(exec, "exec")
-  end
+  #   build_result(coordinator, "syndicate")
+  # end
 
   # ---------------------------------------------------------------------------
   # APP-SPECIFIC MANAGER (REGManager, CENManager)
@@ -126,6 +109,22 @@ class CoordinatorLookupService
     )
 
     build_result(manager, "manager")
+  end
+
+  # ---------------------------------------------------------------------------
+  # EXEC LEAD (FR Exec Lead)
+  # ---------------------------------------------------------------------------
+  def lookup_exec_lead
+    exec = UseridDetail.userid("FR Exec Lead").first
+    return nil unless valid_coordinator?(exec)
+
+    StructuredLogging.warn(
+      event: "coordinator_lookup_fallback_exec",
+      message: "Falling back to Exec Lead",
+      context: { exec: exec.userid }
+    )
+
+    build_result(exec, "exec")
   end
 
   # ---------------------------------------------------------------------------
