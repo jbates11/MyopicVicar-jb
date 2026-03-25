@@ -4,88 +4,6 @@ class MailRoutingPipeline
   # ---------------------------------------------------------------------------
   # Public API
   # ---------------------------------------------------------------------------
-  def initialize(message_path:, user:, batch_name:, appname:, dry_run: false)
-    @message_path = message_path
-    @user         = normalize_user(user)
-    @batch_name   = batch_name
-    @appname      = appname.to_s.downcase
-    @dry_run      = dry_run
-  end
-
-  def call
-    StructuredLogging.info(
-      event: "pipeline_start",
-      message: "Mail routing pipeline started",
-      context: { batch: @batch_name, userid: @user&.userid, message_path: @message_path, appname: @appname, dry_run: @dry_run }
-    )
-
-    raw_message = load_message
-
-    # 1. Batch lookup
-    batch_result = BatchLookupService.new(
-      file_name: @batch_name,
-      userid: @user,
-      appname: @appname
-    ).call
-
-    # 2. County lookup
-    county_result = CountyLookupService.new(
-      file_name: @batch_name,
-      userid: @user,
-      appname: @appname,
-      batch_record: batch_result.batch
-    ).call
-
-    # 3. Coordinator lookup
-    coordinator_result = CoordinatorLookupService.new(
-      userid: @user,
-      county: county_result.county,
-      syndicate_code: @user&.syndicate,
-      appname: @appname
-    ).call
-
-    # 4. Eligibility - Valid email address
-    eligibility_result = EligibilityService.new(@user).call
-
-    # 5. Build subject + message
-    message_result = MessageBuilderService.new(
-      appname: @appname,
-      userid: @user,
-      file_name: @batch_name,
-      raw_message: raw_message,
-      batch_result: batch_result,
-      county_result: county_result,
-      eligibility_result: eligibility_result
-    ).call
-
-    # 6. Routing (to/cc)
-    routing = compute_routing(
-      coordinator_result: coordinator_result,
-      message_result: message_result,
-      eligibility_result: eligibility_result
-    )
-
-    # 7. DryRun handling
-    if @dry_run
-      return dry_run_report(
-        batch_result: batch_result,
-        county_result: county_result,
-        coordinator_result: coordinator_result,
-        eligibility_result: eligibility_result,
-        message_result: message_result,
-        routing: routing
-      )
-    end
-
-    # 8. Normal result
-    OpenStruct.new(
-      to: routing.to,
-      cc: routing.cc,
-      subject: message_result.subject,
-      message: message_result.message,
-      person_forename: routing.person_forename
-    )
-  end
 
   # ---------------------------------------------------------------------------
   # Convenience Helper for Rails Console, Admin UI, and Ops
@@ -115,6 +33,104 @@ class MailRoutingPipeline
     ).call
   end
 
+  def initialize(message_path:, user:, batch_name:, appname:, dry_run: false)
+    @message_path = message_path
+    @user         = normalize_user(user)
+    @batch_name   = batch_name
+    @appname      = appname.to_s.downcase
+    @dry_run      = dry_run
+  end
+
+  def call
+    StructuredLogging.info(
+      event: "pipeline_start",
+      message: "Mail routing pipeline started",
+      context: { 
+        batch: @batch_name, 
+        userid: @user&.userid, 
+        message_path: @message_path, 
+        appname: @appname, 
+        dry_run: @dry_run }
+    )
+
+    raw_message = load_message
+
+    # 1. Batch lookup
+    batch_result = BatchLookupService.new(
+      file_name: @batch_name,
+      userid: @user,
+      appname: @appname
+    ).call
+
+    # 2. County lookup
+    county_result = CountyLookupService.new(
+      file_name: @batch_name,
+      userid: @user,
+      appname: @appname,
+      batch_record: batch_result.batch
+    ).call
+
+    # 3. Coordinator lookup
+    coordinator_result = CoordinatorLookupService.new(
+      userid: @user,
+      county: county_result.county,
+      syndicate_code: @user&.syndicate,
+      appname: @appname
+    ).call
+
+    # 3b. Syndicate coordinator lookup (full object + email)
+    syndicate_result = SyndicateCoordinatorLookupService.new(
+      syndicate_code: @user&.syndicate,
+      appname: @appname
+    ).call
+
+    # 4. Eligibility - Valid email address
+    eligibility_result = EligibilityService.new(@user).call
+
+    # 5. Build subject + message
+    message_result = MessageBuilderService.new(
+      appname: @appname,
+      userid: @user,
+      file_name: @batch_name,
+      raw_message: raw_message,
+      batch_result: batch_result,
+      county_result: county_result,
+      eligibility_result: eligibility_result
+    ).call
+
+    # 6. Routing (to/cc)
+    routing = compute_routing(
+      county_result: county_result,
+      syndicate_result: syndicate_result,
+      message_result: message_result,
+      eligibility_result: eligibility_result
+    )
+
+    # 7. DryRun handling
+    if @dry_run
+      return dry_run_report(
+        batch_result: batch_result,
+        county_result: county_result,
+        coordinator_result: coordinator_result,
+        eligibility_result: eligibility_result,
+        message_result: message_result,
+        routing: routing,
+        syndicate_result: syndicate_result
+      )
+    end
+
+    # 8. Normal result
+    OpenStruct.new(
+      to: routing.to,
+      cc: routing.cc,
+      subject: message_result.subject,
+      message: message_result.message,
+      person_forename: routing.person_forename
+    )
+  end
+
+
+
   # ---------------------------------------------------------------------------
   # Internal workflow
   # ---------------------------------------------------------------------------
@@ -134,81 +150,286 @@ class MailRoutingPipeline
   # ---------------------------------------------------------------------------
   # DryRun Report
   # ---------------------------------------------------------------------------
-  def dry_run_report(batch_result:, county_result:, coordinator_result:, eligibility_result:, message_result:, routing:)
-    # AuditEvent.info(
-    #   event: "dry_run_pipeline",
-    #   message: "Dry run executed successfully",
-    #   pipeline_step: "pipeline",
-    #   context: {
-    #     userid: @user&.userid,
-    #     batch: @batch_name,
-    #     coordinator_role: coordinator_result.role,
-    #     valid_email_address: eligibility_result.eligible,
-    #     matches_county_group: message_result.matches_county_group
-    #   }
-    # )
-
+  def dry_run_report(
+    batch_result:,
+    county_result:,
+    coordinator_result:,
+    eligibility_result:,
+    message_result:,
+    routing:,
+    syndicate_result:
+  )
     StructuredLogging.info(
       event: "dry_run_complete",
       message: "Dry run completed",
-      context: { routing: routing }
+      context: {
+        routing: routing,
+        matches_county_group: message_result.matches_county_group,
+        eligible: eligibility_result.eligible
+      }
     )
 
     OpenStruct.new(
       dry_run: true,
-      batch: batch_result,
-      county: county_result,
-      coordinator: coordinator_result,
-      valid_email_address: eligibility_result,
-      message: message_result,
-      routing: routing
+      pipeline: {
+        batch_lookup: {
+          file_name: batch_result.file_name,
+          period: batch_result.period,
+          error_count: batch_result.error_count,
+          warning_count: batch_result.warning_count,
+          batch_present: !batch_result.batch.nil?
+        },
+
+        county_lookup: {
+          chapman_code: county_result.county&.chapman_code,
+          coordinator_email: county_result.coordinator_email,
+          coordinator_role: county_result.coordinator&.class&.name
+        },
+
+        syndicate_lookup: {
+          coordinator_email: syndicate_result.email,
+          coordinator_role: syndicate_result.role,
+          coordinator_forename: syndicate_result.coordinator&.person_forename
+        },
+
+        eligibility: {
+          eligible: eligibility_result.eligible,
+          reason: eligibility_result.eligible ? "valid email" : "invalid or missing email"
+        },
+
+        message: {
+          subject: message_result.subject,
+          matches_county_group: message_result.matches_county_group,
+          summary: message_result.summary,
+          raw_message_preview: message_result.message.to_s[0..200]
+        },
+
+        routing: {
+          scenario: routing_scenario_name(
+            message_result.matches_county_group,
+            eligibility_result.eligible
+          ),
+          matches_county_group: message_result.matches_county_group,
+          eligible: eligibility_result.eligible,
+          to: routing.to,
+          cc: routing.cc,
+          greeting: routing.person_forename
+        },
+
+        coordinator_fallbacks: {
+          county: {
+            chosen: county_result.coordinator_email,
+            role: county_result.coordinator&.class&.name || "fallback",
+            chain: %w[county manager exec fallback]
+          },
+          syndicate: {
+            chosen: syndicate_result.email,
+            role: syndicate_result.role,
+            chain: %w[syndicate manager exec fallback]
+          }
+        }
+      }
     )
   end
 
   # ---------------------------------------------------------------------------
   # Routing Logic
   # ---------------------------------------------------------------------------
-  def compute_routing(coordinator_result:, message_result:, eligibility_result:)
-    if eligibility_result.eligible
-      eligible_routing(coordinator_result, message_result)
-    else
-      ineligible_routing(coordinator_result)
-    end
-  end
+  def compute_routing(county_result:, syndicate_result:, message_result:, eligibility_result:)
+    matches  = message_result.matches_county_group
+    eligible = eligibility_result.eligible
 
-  def eligible_routing(coordinator_result, message_result)
+    # ---------------------------------------------------------
+    # Build user email
+    # ---------------------------------------------------------
     user_email = build_friendly_email(
       @user.person_forename,
       @user.person_surname,
       @user.email_address
     )
 
-    if message_result.matches_county_group
+    # ---------------------------------------------------------
+    # Extract coordinator emails + forenames
+    # ---------------------------------------------------------
+    county_email        = county_result.coordinator_email
+    syndicate_email     = syndicate_result.email
+
+    county_forename     = county_result.coordinator&.person_forename.to_s
+    syndicate_forename  = syndicate_result.coordinator&.person_forename.to_s
+    user_forename       = @user.person_forename.to_s
+
+    # ---------------------------------------------------------
+    # Fallback coordinator (manager → exec → hardcoded)
+    # ---------------------------------------------------------
+    fallback_email       = syndicate_result.role == "fallback" ? syndicate_result.email : nil
+    fallback_forename    = syndicate_result.role == "fallback" ? "" : nil
+
+
+    to = nil
+    cc = []
+    person_forename = nil
+
+    # ---------------------------------------------------------
+    # Scenario routing
+    # ---------------------------------------------------------
+    case [matches, eligible]
+
+    # ---------------------------------------------------------
+    # Scenario 1
+    # matches = true, eligible = true
+    # to = user
+    # cc = syndicate, county
+    # ---------------------------------------------------------
+    when [true, true]
       to = user_email
-      cc = [coordinator_result.email].compact.uniq
-    else
-      to = coordinator_result.email
-      cc = [user_email].compact.uniq
+      cc = [syndicate_email, county_email].compact.uniq
+      person_forename = user_forename
+
+      StructuredLogging.info(
+        event: "routing_decision",
+        message: "Scenario 1 routing applied",
+        context: { to: to, cc: cc, matches: matches, eligible: eligible }
+      )
+
+    # ---------------------------------------------------------
+    # Scenario 2
+    # matches = true, eligible = false
+    # to = syndicate (or fallback)
+    # cc = county
+    # ---------------------------------------------------------
+    when [true, false]
+      to = syndicate_email || county_email || fallback_email
+      cc = [county_email].compact
+
+      person_forename =
+        if syndicate_email
+          syndicate_forename
+        elsif county_email
+          county_forename
+        else
+          fallback_forename
+        end
+
+      StructuredLogging.warn(
+        event: "routing_decision",
+        message: "Scenario 2 routing applied",
+        context: {
+          to: to,
+          cc: cc,
+          matches: matches,
+          eligible: eligible,
+          syndicate_missing: syndicate_email.nil?,
+          county_missing: county_email.nil?
+        }
+      )
+
+    # ---------------------------------------------------------
+    # Scenario 3
+    # matches = false, eligible = true
+    # to = county (or fallback)
+    # cc = syndicate, user
+    # ---------------------------------------------------------
+    when [false, true]
+      to = county_email || fallback_email
+      cc = [syndicate_email, user_email].compact.uniq
+
+      person_forename =
+        if county_email
+          county_forename
+        else
+          fallback_forename
+        end
+
+      StructuredLogging.info(
+        event: "routing_decision",
+        message: "Scenario 3 routing applied",
+        context: {
+          to: to,
+          cc: cc,
+          matches: matches,
+          eligible: eligible,
+          county_missing: county_email.nil?
+        }
+      )
+
+    # ---------------------------------------------------------
+    # Scenario 4
+    # matches = false, eligible = false
+    # to = county (or fallback)
+    # cc = syndicate
+    # ---------------------------------------------------------
+    when [false, false]
+      to = county_email || fallback_email
+      cc = [syndicate_email].compact
+
+      person_forename =
+        if county_email
+          county_forename
+        else
+          fallback_forename
+        end
+
+      StructuredLogging.warn(
+        event: "routing_decision",
+        message: "Scenario 4 routing applied",
+        context: {
+          to: to,
+          cc: cc,
+          matches: matches,
+          eligible: eligible,
+          county_missing: county_email.nil?
+        }
+      )
     end
 
+    # ---------------------------------------------------------
+    # Final routing object
+    # ---------------------------------------------------------
+    
+    # Ensure each person receives only one email
+    deduped = deduplicate_routing(to: to, cc: cc)
+
     OpenStruct.new(
-      to: to,
-      cc: cc,
-      person_forename: @user.person_forename.to_s
+      to: deduped[:to],
+      cc: deduped[:cc],
+      person_forename: person_forename
     )
   end
 
-  def ineligible_routing(coordinator_result)
-    OpenStruct.new(
-      to: coordinator_result.email,
-      cc: [],
-      person_forename: coordinator_result.coordinator&.person_forename.to_s
-    )
+  # --------------------------------------------------------------------------
+  # Deduplication helpers
+  # --------------------------------------------------------------------------
+  def normalize_email(email)
+    email.to_s.strip.downcase
   end
 
+  def deduplicate_routing(to:, cc:)
+    normalized_to = normalize_email(to)
+
+    unique_cc = cc
+      .map(&:to_s)
+      .map(&:strip)
+      .uniq { |email| normalize_email(email) }
+      .reject { |email| normalize_email(email) == normalized_to }
+
+    { to: to, cc: unique_cc }
+  end
+
+  # --------------------------------------------------------------------------
+  # Formatting helpers
+  # --------------------------------------------------------------------------
   def build_friendly_email(forename, surname, email)
     return nil unless email.present?
     "#{forename} #{surname} <#{email}>"
+  end
+
+  def routing_scenario_name(matches, eligible)
+    case [matches, eligible]
+    when [true, true]   then "Scenario 1"
+    when [true, false]  then "Scenario 2"
+    when [false, true]  then "Scenario 3"
+    when [false, false] then "Scenario 4"
+    end
   end
 
   # ---------------------------------------------------------------------------
