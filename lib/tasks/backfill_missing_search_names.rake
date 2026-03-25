@@ -4,8 +4,8 @@ require 'app'
 require 'chapman_code'
 require 'fileutils'
 
-desc 'FreeREG: backfill missing/empty embedded search_names (SearchRecord#transform); args chapman_codes[,limit[,fix]]; third arg fix to save; logs under log/'
-task :backfill_missing_search_names, %i[chapman_codes limit fix] => :environment do |_t, args|
+desc 'FreeREG: backfill search_names via transform; args chapman_codes,limit,fix[,index_hint]'
+task :backfill_missing_search_names, %i[chapman_codes limit fix index_hint] => :environment do |_t, args|
   unless App.name_downcase == 'freereg'
     puts "This task is for FreeREG only (current app: #{App.name_downcase}). Aborting."
     exit 1
@@ -14,7 +14,11 @@ task :backfill_missing_search_names, %i[chapman_codes limit fix] => :environment
   fix = args.fix.to_s.strip == 'fix'
   chapman_codes_arg = args.chapman_codes.to_s.strip
   limit = args.limit.present? ? args.limit.to_i : 0
-  skip_hint = ENV['BACKFILL_SEARCH_NAMES_NO_HINT'].to_s == '1'
+  raw_hint = args.index_hint.to_s.strip
+  hint_name = raw_hint.present? && !%w[none -].include?(raw_hint.downcase) ? raw_hint : nil
+  apply_hint = lambda do |scoped|
+    hint_name.present? ? scoped.hint(hint_name) : scoped
+  end
 
   if chapman_codes_arg.blank?
     puts 'Provide chapman_codes: comma-separated list (e.g. CON,RUT) or all'
@@ -28,19 +32,15 @@ task :backfill_missing_search_names, %i[chapman_codes limit fix] => :environment
                  end
 
   base_filters = lambda do |scoped|
-    scoped
-      .where(:freereg1_csv_entry_id.exists => true)
-      # Match both "search_names does not exist" and "search_names is empty"
-      # without using the expensive `search_names: []` equality form.
-      .where('search_names.0' => { '$exists' => false })
-      .where('transcript_names.0' => { '$exists' => true })
+    # Missing or empty embed: search_names.0 absent (avoids slow search_names: []).
+    scoped.where(:freereg1_csv_entry_id.exists => true).where('search_names.0' => { '$exists' => false }).where('transcript_names.0' => { '$exists' => true })
   end
 
   log_dir = Rails.root.join('log')
   FileUtils.mkdir_p(log_dir)
   log_path = log_dir.join('backfill_missing_search_names.log')
   log = File.open(log_path, 'a')
-  log.puts "[#{Time.now.utc.iso8601}] start fix=#{fix} chapman_codes=#{chapman_codes_arg} counties=#{county_codes.size} limit=#{limit} hint=#{skip_hint ? 'off' : 'chapman_record_type'}"
+  log.puts "[#{Time.now.utc.iso8601}] start fix=#{fix} chapman_codes=#{chapman_codes_arg} counties=#{county_codes.size} limit=#{limit} hint=#{hint_name || 'none'}"
 
   updated_log_path = log_dir.join('backfill_missing_search_names_updated.tsv')
   updated_log = nil
@@ -50,14 +50,13 @@ task :backfill_missing_search_names, %i[chapman_codes limit fix] => :environment
     updated_log.puts %w[search_record_id chapman_code line_id freereg1_csv_entry_id].join("\t")
   end
 
-  # Pre-counts can be expensive for `chapman_code` filters; apply the same hint we use for the cursor.
+  # Pre-counts: optional Mongo index hint (4th arg) when it exists in this DB.
   safe_count = lambda do |scoped|
     begin
-      scoped = scoped.hint('chapman_record_type') unless skip_hint
-      scoped.count
+      apply_hint.call(scoped).count
     rescue StandardError => e
-      if !skip_hint && e.message.to_s.match?(/hint|index|code 2|Bad hint/i)
-        log.puts "count_hint_failed #{e.class}: #{e.message} (falling back to count without hint)"
+      if hint_name.present? && e.message.to_s.match?(/hint|index|code 2|Bad hint/i)
+        log.puts "count_hint_failed #{e.class}: #{e.message} (count without hint)"
         scoped.count
       else
         raise
@@ -121,14 +120,13 @@ task :backfill_missing_search_names, %i[chapman_codes limit fix] => :environment
 
     puts "County #{county_code}: #{county_count} matching"
 
-    cursor = scoped.no_timeout
-    cursor = cursor.hint('chapman_record_type') unless skip_hint
+    cursor = apply_hint.call(scoped.no_timeout)
 
     begin
       each_cursor_record.call(cursor)
     rescue StandardError => e
-      if !skip_hint && e.message.to_s.match?(/hint|index|code 2|Bad hint/i)
-        puts "Hint rejected (#{e.class}): #{e.message}. Set BACKFILL_SEARCH_NAMES_NO_HINT=1 or fix indexes; retrying county #{county_code} without hint."
+      if hint_name.present? && e.message.to_s.match?(/hint|index|code 2|Bad hint/i)
+        puts "Hint rejected (#{e.class}): #{e.message}. Fix 4th arg index name or omit it; retrying county #{county_code} without hint."
         log.puts "hint_failed county=#{county_code} #{e.class}: #{e.message}"
         each_cursor_record.call(scoped.no_timeout)
       else

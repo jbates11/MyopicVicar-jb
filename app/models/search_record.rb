@@ -915,7 +915,9 @@ class SearchRecord
     #other_last_name = {}
     # other_last_name = transcript_names.each{|n| other_last_name["#{n[:role]}"] = [n[:last_name]] if n[:last_name].present?}
     #get_last_name = other_possible_last_name(other_last_name)
-    transcript_names.each do |name_hash|
+    transcript_names.each do |raw|
+      # BSON / Mongo often stores nested hashes with string keys; symbols would read as nil.
+      name_hash = raw.is_a?(Hash) ? raw.with_indifferent_access : raw
       person_type = PersonType::FAMILY
       person_type = PersonType::PRIMARY if name_hash[:type] == 'primary'
       person_type = PersonType::WITNESS if name_hash[:type] == 'witness'
@@ -930,9 +932,9 @@ class SearchRecord
       end
       name = search_name(name_hash[:first_name], name_hash[:last_name], person_type, person_role, person_gender)
       search_names << name if name
-      if name_contains_symbols?(name_hash['first_name']) || name_contains_symbols?(name_hash['last_name'])
-        cleaned_first_name = clean_name(name_hash['first_name']) if name_hash[:first_name].present?
-        cleaned_last_name = clean_name(name_hash['last_name']) if name_hash[:last_name].present?
+      if name_contains_symbols?(name_hash[:first_name]) || name_contains_symbols?(name_hash[:last_name])
+        cleaned_first_name = clean_name(name_hash[:first_name]) if name_hash[:first_name].present?
+        cleaned_last_name = clean_name(name_hash[:last_name]) if name_hash[:last_name].present?
         sn = search_name(cleaned_first_name, cleaned_last_name, person_type, person_role, person_gender)
         search_names << sn if sn
       end
