@@ -33,12 +33,14 @@ class MailRoutingPipeline
     ).call
   end
 
-  def initialize(message_path:, user:, batch_name:, appname:, dry_run: false)
+  def initialize(message_path:, user:, batch_name:, appname:, dry_run: false, success: true)
     @message_path = message_path
     @user         = normalize_user(user)
     @batch_name   = batch_name
     @appname      = appname.to_s.downcase
     @dry_run      = dry_run
+    @success      = false
+    # @success      = success
   end
 
   def call
@@ -61,6 +63,8 @@ class MailRoutingPipeline
       userid: @user,
       appname: @appname
     ).call
+
+    # @success = batch_result.batch.present? && batch_result.error.blank?
 
     # 2. County lookup
     county_result = CountyLookupService.new(
@@ -95,7 +99,8 @@ class MailRoutingPipeline
       raw_message: raw_message,
       batch_result: batch_result,
       county_result: county_result,
-      eligibility_result: eligibility_result
+      eligibility_result: eligibility_result,
+      success: @success
     ).call
 
     # 6. Routing (to/cc)
@@ -125,7 +130,8 @@ class MailRoutingPipeline
       cc: routing.cc,
       subject: message_result.subject,
       message: message_result.message,
-      person_forename: routing.person_forename
+      person_forename: routing.person_forename,
+      success: @success
     )
   end
 
@@ -170,12 +176,15 @@ class MailRoutingPipeline
     OpenStruct.new(
       dry_run: true,
       pipeline: {
+        status: @success ? "SUCCESS PATH" : "FAILURE PATH", 
+
         batch_lookup: {
           file_name: batch_result.file_name,
           period: batch_result.period,
           error_count: batch_result.error_count,
           warning_count: batch_result.warning_count,
-          batch_present: !batch_result.batch.nil?
+          batch_present: !batch_result.batch.nil?,
+          batch_status: batch_result.batch&.status
         },
 
         county_lookup: {

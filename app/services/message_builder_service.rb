@@ -9,9 +9,10 @@ class MessageBuilderService
     userid:,
     file_name:,
     raw_message:,
-    batch_result:,
-    county_result:,
-    eligibility_result:
+    batch_result: nil,
+    county_result: nil,
+    eligibility_result: nil,
+    success: true
   )
     @appname            = appname.to_s.downcase
     @userid             = userid
@@ -20,6 +21,7 @@ class MessageBuilderService
     @batch_result       = batch_result
     @county_result      = county_result
     @eligibility_result = eligibility_result
+    @success            = success
 
     @message            = @raw_message.dup
     @subject            = ""
@@ -27,18 +29,22 @@ class MessageBuilderService
   end
 
   def call
+    # Logic to determine a human-readable reason for the status
+    @summary = determine_summary
+
     case @appname
     when "freereg"
-      build_freereg_message
+      @success ? build_freereg_message : build_freereg_failure_message
     when "freecen"
-      build_freecen_message
+      @success ? build_freecen_message : build_freecen_failure_message
     else
-      build_default_message
+      @success ? build_default_message : build_default_failure_message
     end
 
     OpenStruct.new(
       subject: @subject,
       message: @message,
+      summary: @summary,
       matches_county_group: @matches_county_group
     )
   end
@@ -64,10 +70,25 @@ class MessageBuilderService
       prepend_alert("ALERT! This file was uploaded to your county by userid: #{@userid.userid} from a county group not associated with your county.")
     end
 
-    unless @eligibility_result.eligible
-      prepend_alert("ALERT! You are getting this email because userid: #{@userid.userid} does not have a valid email address")
-      # prepend_alert("ALERT! #{@eligibility_result.reason}")
+    handle_eligibility_alert
+  end
+
+  def build_freereg_failure_message
+    file_county = @county_result.chapman_code
+    user_groups = @userid&.county_groups || []
+    
+    if user_groups.include?(file_county)
+      @matches_county_group = true
+    else
+      @matches_county_group = false
+      prepend_alert("ALERT! This file was uploaded to your county by userid: #{@userid.userid} from a county group not associated with your county.")
     end
+
+    @subject = "WARNING: #{@userid.userid}/#{@file_name} processing encountered serious problem at #{Time.now}"
+    # @subject = "FAILED: #{@userid&.userid}/#{@file_name} could not be processed"
+    prepend_alert("WARNING: The processing of #{@userid.userid}/#{@file_name} failed. Please check the attached logs or error report.")    
+    # prepend_alert("CRITICAL: The processing of #{@file_name} failed. Please check the attached logs or error report.")    
+    handle_eligibility_alert
   end
 
   def build_freereg_normal_subject
@@ -91,6 +112,11 @@ class MessageBuilderService
     @subject = "#{@userid.userid} processed #{@file_name} at #{Time.current}"
   end
 
+  def build_freecen_failure_message
+    @subject = "WARNING: #{@userid&.userid} processing #{@file_name}"
+    prepend_alert("The system encountered an error while processing your FreeCEN file.")
+  end
+
   # ---------------------------------------------------------------------------
   # DEFAULT MESSAGE LOGIC
   # ---------------------------------------------------------------------------
@@ -98,9 +124,32 @@ class MessageBuilderService
     @subject = "Batch #{@file_name} processed"
   end
 
+  def build_default_failure_message
+    @subject = "Batch #{@file_name} processing FAILED"
+  end
+
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
+  def determine_summary
+    return "Process completed successfully." if @success
+    
+    # Failure diagnostics
+    if @batch_result&.batch.nil?
+      "FAILED: No batch record found in MongoDB for #{@file_name}."
+    elsif @batch_result&.batch&.status == 'error'
+      "FAILED: System error or validation crash during processing."
+    else
+      "FAILED: Unknown processing error."
+    end
+  end  
+  
+  def handle_eligibility_alert
+    return if @eligibility_result&.eligible
+
+    prepend_alert("ALERT! You are getting this email because userid: #{@userid&.userid} does not have a valid email address")
+  end
+
   def prepend_alert(text)
     @message = "<p>#{text}</p>" + @message
   end
