@@ -63,20 +63,36 @@ class UserMailer < ActionMailer::Base
     ccs_emails
   end
 
-  def batch_processing_failure(message, user, batch)
-    @appname = appname
-    @message = File.read(message)
-    @userid, @userid_email = user_email_lookup(user)
+  # def batch_processing_failure(message, user, batch)
+  #   @appname = appname
+  #   @message = File.read(message)
+  #   @userid, @userid_email = user_email_lookup(user)
 
-    @syndicate_coordinator, @syndicate_coordinator_email = syndicate_coordinator_email_lookup(@userid)
-    @county_coordinator, @county_coordinator_email = county_coordinator_email_lookup(batch, @userid)
+  #   @syndicate_coordinator, @syndicate_coordinator_email = syndicate_coordinator_email_lookup(@userid)
+  #   @county_coordinator, @county_coordinator_email = county_coordinator_email_lookup(batch, @userid)
 
-    # Use the safe navigation operator and fallback to the 'user' string
-    uid = @userid&.userid || user
-    subject = "#{uid}/#{batch} processing encountered serious problem at #{Time.now}"
-    # subject = "#{@userid.userid}/#{batch} processing encountered serious problem at #{Time.now}"
+  #   # Use the safe navigation operator and fallback to the 'user' string
+  #   uid = @userid&.userid || user
+  #   subject = "#{uid}/#{batch} processing encountered serious problem at #{Time.now}"
+  #   # subject = "#{@userid.userid}/#{batch} processing encountered serious problem at #{Time.now}"
 
-    adjust_email_recipients(subject)
+  #   adjust_email_recipients(subject)
+  # end
+
+  def batch_processing_failure(message_path, user, batch)
+    result = MailRoutingPipeline.new(
+      message_path: message_path,
+      user: user,
+      batch_name: batch,
+      appname: appname,
+      success: false
+    ).call
+
+    @appname = appname.to_s.downcase 
+    @message = result.message
+    @person_forename = result.person_forename
+
+    mail(to: result.to, cc: result.cc, subject: result.subject)
   end
 
   # def batch_processing_success(message, user, batch)
