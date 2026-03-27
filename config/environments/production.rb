@@ -101,6 +101,7 @@ MyopicVicar::Application.configure do
   config.days_to_retain_search_queries = MyopicVicar::MongoConfig['days_to_retain_search_queries']
   config.days_to_retain_messages = MyopicVicar::MongoConfig['days_to_retain_messages']
   config.sleep = MyopicVicar::MongoConfig['sleep']
+  config.file_sleep = MyopicVicar::MongoConfig['file_sleep'] || 100
   config.emmendation_sleep = MyopicVicar::MongoConfig['emmendation_sleep']
   config.processing_delta = MyopicVicar::MongoConfig['files_for_processing'] unless MyopicVicar::MongoConfig['files_for_processing'].blank?
   config.delete_list = MyopicVicar::MongoConfig['delete_list']
