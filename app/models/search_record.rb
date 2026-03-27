@@ -696,13 +696,13 @@ class SearchRecord
   def format_location
     location_array = []
     if freereg1_csv_entry
-      register = freereg1_csv_entry.freereg1_csv_file.register
+      register = freereg1_csv_entry.freereg1_csv_file&.register
       register_type = ''
       register_type = RegisterType.display_name(register.register_type) unless register.nil? # should not be nil but!
-      church = register.church
+      church = register&.church
       church_name = ''
       church_name = church.church_name unless church.nil? # should not be nil but!
-      place = church.place
+      place = church&.place
       place_name = place.place_name unless place.nil? # should not be nil but!
       location_array << "#{place_name} (#{church_name})"
       location_array << " [#{register_type}]"
