@@ -305,7 +305,7 @@ class Freereg1CsvEntriesController < ApplicationController
     @freereg1_csv_file.lock_all(session[:my_own])
     @freereg1_csv_file.modification_date = Time.now.strftime("%d %b %Y")
     @freereg1_csv_file.error = @freereg1_csv_file.batch_errors.count - 1 if session[:error_id].present?
-    @freereg1_csv_file.userid_detail_id = @userid
+    #@freereg1_csv_file.userid_detail_id = @userid
     @freereg1_csv_file.save
   end
 
