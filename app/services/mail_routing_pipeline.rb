@@ -39,8 +39,7 @@ class MailRoutingPipeline
     @batch_name   = batch_name
     @appname      = appname.to_s.downcase
     @dry_run      = dry_run
-    @success      = false
-    # @success      = success
+    @success      = success
   end
 
   def call
@@ -64,8 +63,6 @@ class MailRoutingPipeline
       appname: @appname
     ).call
 
-    # @success = batch_result.batch.present? && batch_result.error.blank?
-
     # 2. County lookup
     county_result = CountyLookupService.new(
       file_name: @batch_name,
@@ -74,11 +71,10 @@ class MailRoutingPipeline
       batch_record: batch_result.batch
     ).call
 
-    # 3. Coordinator lookup
+    # 3. County coordinator lookup
     coordinator_result = CoordinatorLookupService.new(
       userid: @user,
       county: county_result.county,
-      syndicate_code: @user&.syndicate,
       appname: @appname
     ).call
 
@@ -179,12 +175,12 @@ class MailRoutingPipeline
         status: @success ? "SUCCESS PATH" : "FAILURE PATH", 
 
         batch_lookup: {
-          file_name: batch_result.file_name,
-          period: batch_result.period,
-          error_count: batch_result.error_count,
-          warning_count: batch_result.warning_count,
+          file_name: batch_result.batch&.file_name,
+          date_min: batch_result.batch&.datemin,
+          error_count: batch_result.batch&.error,
+          zero_entries: batch_result.batch&.zero_entries,
           batch_present: !batch_result.batch.nil?,
-          batch_status: batch_result.batch&.status
+          batch_processed: batch_result.batch&.processed 
         },
 
         county_lookup: {

@@ -6,9 +6,16 @@ class CountyLookupService
   # ---------------------------------------------------------------------------
   def initialize(file_name:, userid:, appname:, batch_record: nil)
     @file_name     = file_name
-    @userid        = userid
     @appname       = appname.to_s.downcase
     @batch_record  = batch_record
+
+    if userid.is_a?(UseridDetail)
+      @user_obj = userid
+      @userid   = userid.userid # The string "test33"
+    else
+      @userid   = userid
+      @user_obj = UseridDetail.where(userid: userid).first
+    end
   end
 
   def call
@@ -19,11 +26,10 @@ class CountyLookupService
     return fallback_result unless county.present?
 
     coordinator_result = CoordinatorLookupService.new(
-      userid: @userid,
-      county: county,
-      syndicate_code: @userid&.syndicate,
+      userid: @userid,               # Pass the String
+      county: county,                # Pass the Object
       appname: @appname
-    ).call
+      ).call
 
     OpenStruct.new(
       chapman_code: chapman_code,
@@ -82,7 +88,6 @@ class CountyLookupService
     coordinator_result = CoordinatorLookupService.new(
       userid: @userid,
       county: nil,
-      syndicate_code: @userid&.syndicate,
       appname: @appname
     ).call
 

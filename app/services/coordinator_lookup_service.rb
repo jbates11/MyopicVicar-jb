@@ -4,21 +4,19 @@ class CoordinatorLookupService
   # ---------------------------------------------------------------------------
   # Public API
   # ---------------------------------------------------------------------------
-  def initialize(userid:, county:, syndicate_code:, appname:)
-    @userid          = userid
-    @county          = county
-    @syndicate_code  = syndicate_code
+  def initialize(userid:, county:, appname:)
+    @userid          = userid.is_a?(UseridDetail) ? userid.userid : userid
+    @county          = county.is_a?(String) ? County.where(chapman_code: county).first : county
     @appname         = appname.to_s.downcase
   end
-
+  
   def call
     StructuredLogging.info(
       event: "coordinator_lookup_start",
       message: "Starting coordinator lookup",
       context: {
-        userid: @userid&.userid,
+        userid: @userid,
         county: @county&.chapman_code,
-        syndicate: @syndicate_code,
         appname: @appname
       }
     )
@@ -61,30 +59,6 @@ class CoordinatorLookupService
 
     build_result(coordinator, "county")
   end
-
-  # ---------------------------------------------------------------------------
-  # SYNDICATE COORDINATOR
-  # ---------------------------------------------------------------------------
-  # def lookup_syndicate_coordinator
-  #   return nil unless @syndicate_code.present?
-
-  #   syndicate = Syndicate.where(syndicate_code: @syndicate_code).first
-  #   return nil unless syndicate.present?
-
-  #   coordinator_id = syndicate.syndicate_coordinator
-  #   return nil unless coordinator_id.present?
-
-  #   coordinator = UseridDetail.where(userid: coordinator_id).first
-  #   return nil unless valid_coordinator?(coordinator)
-
-  #   StructuredLogging.info(
-  #     event: "coordinator_lookup",
-  #     message: "Using syndicate coordinator",
-  #     context: { coordinator: coordinator.userid }
-  #   )
-
-  #   build_result(coordinator, "syndicate")
-  # end
 
   # ---------------------------------------------------------------------------
   # APP-SPECIFIC MANAGER (REGManager, CENManager)
@@ -138,17 +112,6 @@ class CoordinatorLookupService
       message: "No coordinator found — using hardcoded fallback",
       context: { fallback_email: fallback_email }
     )
-
-    # AuditEvent.error(
-    #   event: "coordinator_lookup_hard_fallback",
-    #   message: "No coordinator found for user",
-    #   pipeline_step: "coordinator_lookup",
-    #   context: {
-    #     userid: @userid&.userid,
-    #     county: @county&.chapman_code,
-    #     syndicate: @syndicate_code
-    #   }
-    # )
 
     OpenStruct.new(
       coordinator: nil,

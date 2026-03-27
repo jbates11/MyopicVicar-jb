@@ -4,21 +4,27 @@ class BatchLookupService
   # ---------------------------------------------------------------------------
   # Public API
   # ---------------------------------------------------------------------------
-  def initialize(file_name:, userid:, appname:)
+  def initialize(file_name:, userid:, appname:, dry_run: false )
     @file_name = file_name
-    @userid    = userid
+    @userid    = userid.is_a?(UseridDetail) ? userid.userid : userid
     @appname   = appname.to_s.downcase
+    @dry_run   = dry_run
   end
 
   def call
     return fallback_result("Missing file name") unless @file_name.present?
     return fallback_result("Missing userid")     unless @userid.present?
 
+    # If dry_run is true, we log the attempt for audit purposes
+    Rails.logger.info("BatchLookupService: DRY RUN for #{@file_name} (User: #{@userid})") if @dry_run
+    
     batch = lookup_batch
 
     if batch.present?
+      Rails.logger.info("BatchLookupService: Found batch #{batch.id} for #{@file_name}")
       success(batch)
     else
+      Rails.logger.info("BatchLookupService: No record found for File: #{@file_name}, User: #{@userid}, App: #{@appname}")
       fallback_result("Batch not found")
     end
   end
@@ -52,7 +58,8 @@ class BatchLookupService
       datemin: batch.datemin,
       datemax: batch.datemax,
       errors: batch.error,
-      reason: nil
+      reason: @dry_run ? "Dry Run: Record exists" : nil,
+      dry_run: @dry_run
     )
   end
 
@@ -64,7 +71,8 @@ class BatchLookupService
       datemin: nil,
       datemax: nil,
       errors: nil,
-      reason: reason
+      reason: @dry_run ? "Dry Run: #{reason}" : reason,
+      dry_run: @dry_run
     )
   end
 end
