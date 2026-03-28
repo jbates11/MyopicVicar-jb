@@ -77,10 +77,11 @@ class NewFreeregCsvUpdateProcessor
       p "Locking file: #{@rake_lock_file}"
       @locking_file.flock(File::LOCK_EX)
       self.activate_project(create_search_records, type, force, range)
-      # sleep(300)
+      # sleep(300) # 300 secondsn ~ 5 minutes - polling loop, disable when on dev
     end
     p "Removing lock on #{@rake_lock_file}" 
     @locking_file.flock(File::LOCK_UN)
+
     p 'FREEREG:CSV_PROCESSING: removing rake lock file'
     if File.exist?(@rake_lock_file)
       x = File.open(@rake_lock_file)
@@ -120,7 +121,13 @@ class NewFreeregCsvUpdateProcessor
         @project.total_files += 1
         #@project.communicate_to_managers(@csvfile) if @project.type_of_project == "individual"
       end
-      sleep(100) #if Rails.env.production?
+      # sleep(100) #if Rails.env.production?
+      sleep(self.safe_file_sleep)
+
+      Rails.logger.debug("\n---config file sleep: #{self.safe_file_sleep.inspect}")
+      Rails.logger.debug("----sleep: #{MyopicVicar::MongoConfig['sleep'].inspect}")
+      sleep_time = (Rails.application.config.sleep.to_f).to_f
+      Rails.logger.debug("----sleep_time: #{sleep_time.inspect}")
     end
   end
 
@@ -135,6 +142,21 @@ class NewFreeregCsvUpdateProcessor
       path = File.join(Rails.root, path)
     end
     path
+  end
+
+  # Class-level helper for safe, defensive file sleep 
+  def self.safe_file_sleep
+    raw_value =
+      if Rails.application.config.respond_to?(:file_sleep)
+        Rails.application.config.file_sleep
+      else
+        nil
+      end
+
+    Float(raw_value)
+  rescue ArgumentError, TypeError, NoMethodError
+    Rails.logger.warn("FREEREG:CSV_PROCESSING: invalid or missing file_sleep, defaulting to 0.0") rescue nil
+    0.0
   end
 
   def communicate_to_managers(csvfile)
@@ -844,7 +866,11 @@ class CsvFile < CsvFiles
           batch_error.freereg1_csv_file = freereg1_csv_file
           batch_error.save
           batch_errors = batch_errors + 1
-          message = "Data Error in line #{datarecord[:file_line_number]} problem was #{success}.<br>"
+
+          row_num = datarecord[:file_line_number] + @csv_records.header_lines.length
+          message = "Data Error in line #{datarecord[:file_line_number]}/ (row #{row_num}). The problem was #{success}.<br>"
+          # message = "Data Error in line #{datarecord[:file_line_number]} problem was #{success}.<br>"
+
           project.write_messages_to_all(message,true)
         end #end success  no change
       end #end record
@@ -1283,7 +1309,7 @@ class CsvRecords <  CsvFile
     proceed = true
     if header_fields.length == 1
       proceed = false
-      csvfile.header_error << "The field order definition contains no fields. <br>"
+      csvfile.header_error << "The field order definition contains no fields. <br>"bennet
     end
     n = 0
     while n < header_fields.length
@@ -1293,7 +1319,18 @@ class CsvRecords <  CsvFile
         @data_entry_order[field.to_sym] = n
       else
         proceed = false
-        csvfile.header_error << "The field order definition at position #{n} contains an invalid field: #{header_fields[n]} (is it blank?)}. <br>"
+
+           col_letter = ("A".."ZZ").to_a[n] || "?"
+          close_match = get_closest_valid_field(field, csvfile)
+          Rails.logger.info("\n---close_match: #{close_match.inspect}")
+          if close_match.present?
+            insert = "Do you mean #{close_match}?"
+          else
+            insert = "Stray text or blank space characters."
+          end
+          csvfile.header_error << "The field order definition at position #{n}/ (column #{col_letter}) contains an invalid field: #{header_fields[n]} #{insert} <br>"
+
+        # csvfile.header_error << "The field order definition at position #{n} contains an invalid field: #{header_fields[n]} (is it blank?)}. <br>"
       end
       n = n + 1
     end
@@ -1304,9 +1341,22 @@ class CsvRecords <  CsvFile
   def extract_the_data(csvfile,project)
     success = true
     n = 0
+
+    expected_columns = @data_entry_order.values.max.to_i + 1
+
     @data_lines.each do |line|
       n = n + 1
       #p "processing line #{n}"
+
+      if line.length > expected_columns
+        surplus_fields = line[expected_columns..-1]
+        if surplus_fields.present? && surplus_fields.any?(&:present?)
+          row_num = n + @header_lines.length
+          message = "Warning: Data line #{n}/ (row #{row_num}) contains surplus columns that will be silently ignored.<br>"
+          project.write_messages_to_all(message, true)
+        end
+      end
+
       @record = CsvRecord.new(line)
       success, message = @record.extract_data_line(self, csvfile, project, n)
       #success,message = @record.add_record_to_appropriate_file(location,self,csvfile,project,n) if success.present?
@@ -1317,6 +1367,25 @@ class CsvRecords <  CsvFile
     project.write_messages_to_all(message, true) if
     csvfile.unique_locations.length.present? && csvfile.unique_locations.length > 1
     return success, n
+  end
+
+  def get_closest_valid_field(invalid_field, csvfile)
+    record_type = csvfile.header[:record_type]
+    case record_type
+    when RecordType::BAPTISM
+      entry_fields = FreeregOptionsConstants::FLEXIBLE_CSV_FORMAT_BAPTISM
+    when RecordType::BURIAL
+      entry_fields = FreeregOptionsConstants::FLEXIBLE_CSV_FORMAT_BURIAL
+    when RecordType::MARRIAGE
+      entry_fields = FreeregOptionsConstants::FLEXIBLE_CSV_FORMAT_MARRIAGE
+    else
+      entry_fields = []
+    end
+    entry_fields = entry_fields + ["chapman_code", "place_name"]
+    return "" if entry_fields.empty? || invalid_field.blank?
+
+    closest = entry_fields.min_by { |valid_field| Text::Levenshtein.distance(invalid_field, valid_field) }
+    closest
   end
 
   def get_default_data_entry_order(csvfile)
@@ -1491,20 +1560,24 @@ class CsvRecord < CsvRecords
 
   def extract_register_location(csvrecords,csvfile,project,line)
     #p "Extracting location"
+    row_num = line + csvrecords.header_lines.length
     success1 = false
     success4 = false
     success5 = false
     register_location = Hash.new
     if no_location_fields?(@data_line,csvrecords,csvfile)
-      project.write_messages_to_all("The line #{line} has no location information ie no place/church/register. <br>", true)
+      project.write_messages_to_all("The line #{line}/ (row #{row_num}) has no location information ie no place/church/register. <br>", true)
+      # project.write_messages_to_all("The line #{line} has no location information ie no place/church/register. <br>", true)
       return false
     end
     chapman_code = @data_line[csvrecords.data_entry_order[:chapman_code]]
     success = true if FreeregValidations.valid_chapman_code?(chapman_code)
-    project.write_messages_to_all("The county code #{chapman_code} at field #{@data_line[csvrecords.data_entry_order[:chapman_code]]} is invalid at line #{line}. <br>", true)   if  !success
+    project.write_messages_to_all("The county code #{chapman_code} at field #{@data_line[csvrecords.data_entry_order[:chapman_code]]} is invalid at line #{line}/ (row #{row_num}). <br>", true) if !success
+    # project.write_messages_to_all("The county code #{chapman_code} at field #{@data_line[csvrecords.data_entry_order[:chapman_code]]} is invalid at line #{line}. <br>", true)   if  !success
     place_name = @data_line[csvrecords.data_entry_order[:place_name]]
     success1, set_place_name = validate_place_and_set(place_name,chapman_code)
-    project.write_messages_to_all("The place name at field #{@data_line[csvrecords.data_entry_order[:place_name]]} is invalid at line #{line}. <br>", true)   if  !success1
+    project.write_messages_to_all("The place name at field #{@data_line[csvrecords.data_entry_order[:place_name]]} is invalid at line #{line}/ (row #{row_num}). <br>", true) if !success1
+    # project.write_messages_to_all("The place name at field #{@data_line[csvrecords.data_entry_order[:place_name]]} is invalid at line #{line}. <br>", true)   if  !success1
     place_name = set_place_name if success1
     #allows for different Register type input
     if csvfile.header[:def] && csvrecords.data_entry_order[:register_type].present?
@@ -1516,10 +1589,12 @@ class CsvRecord < CsvRecords
     else
       #part of church name
       success4,message,church_name,register_type = self.extract_register_type_and_church_name(csvrecords,csvfile,project,line)
-      project.write_messages_to_all("The church field #{church_name} is invalid at line #{line}. <br>", true)   if  !success4
+      project.write_messages_to_all("The church field #{church_name} is invalid at line #{line}/ (row #{row_num}). <br>", true) if !success4
+      # project.write_messages_to_all("The church field #{church_name} is invalid at line #{line}. <br>", true)   if  !success4
       success5, set_church_name = validate_church_and_set(church_name,chapman_code,place_name) if success1 && success4
     end
-    project.write_messages_to_all("The church name #{church_name} is not in the database for #{place_name} at line #{line}. <br>", true)   if  !success5
+    project.write_messages_to_all("The church name #{church_name} is not in the database for #{place_name} at line #{line}/ (row #{row_num}). <br>", true) if !success5
+    # project.write_messages_to_all("The church name #{church_name} is not in the database for #{place_name} at line #{line}. <br>", true)   if  !success5
     #we use the server church name in case of case differences
     church_name = set_church_name if  success5
     return false unless success && success1 && success4 && success5
