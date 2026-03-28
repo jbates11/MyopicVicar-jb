@@ -42,9 +42,12 @@ module Communication
         @success ? build_default_message : build_default_failure_message
       end
 
+      sanitized = HtmlSanitizationService.clean(@message)
+
       OpenStruct.new(
         subject: @subject,
-        message: @message,
+        message: sanitized,
+        # message: @message,
         summary: @summary,
         matches_county_group: @matches_county_group
       )
