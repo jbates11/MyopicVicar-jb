@@ -357,9 +357,9 @@ class CsvFile < CsvFiles
       @success = true
       project.member_message_file = self.define_member_message_file
       @file_start = Time.new
-      p "FREEREG:CSV_PROCESSING: Started on the file #{@header[:file_name]} for #{@header[:userid]} at #{@file_start}"
+      p "FREEREG:CSV_PROCESSING: Started the file #{@header[:file_name]} for #{@header[:userid]} at #{@file_start}"
       project.write_log_file("******************************************************************* <br>")
-      project.write_messages_to_all("Started on the file #{@header[:file_name]} for #{@header[:userid]} at #{@file_start}. <p>", true)
+      project.write_messages_to_all("Started the file #{@header[:file_name]} for #{@header[:userid]} at #{@file_start}. <p>", true)
       @success, message = self.ensure_processable?(project) unless project.force_rebuild
       #p "finished file checking #{message}. <br>"
       return false, message unless @success
@@ -894,7 +894,7 @@ class CsvFile < CsvFiles
     if freereg1_csv_file.nil?
       freereg1_csv_file = Freereg1CsvFile.new(batch_header)
       freereg1_csv_file.update_register
-      message = "Creating a new batch for #{batch_header[:chapman_code]}, #{batch_header[:place_name]}, #{batch_header[:church_name]}, #{RegisterType::display_name(batch_header[:register_type])}. <br>"
+      message = "Created a new batch for #{batch_header[:chapman_code]}, #{batch_header[:place_name]}, #{batch_header[:church_name]}, #{RegisterType::display_name(batch_header[:register_type])}. <br>"
     else
       freereg1_csv_file.update_attributes(:uploaded_date => self.uploaded_date, :lds => self.header[:lds], :def => self.header[:def], :order => self.header[:order])
       message = "Updating the current batch for #{batch_header[:chapman_code]}, #{batch_header[:place_name]}, #{batch_header[:church_name]}, #{RegisterType::display_name(batch_header[:register_type])}. <br>"
@@ -1298,7 +1298,7 @@ class CsvRecords <  CsvFile
       @data_entry_order = get_default_data_entry_order(csvfile)
     when header_field[0] == "#" && header_field[1] == "DEF"
       csvfile.header[:def]  = true
-      project.write_messages_to_all("Flexible csv flag detected. The next line will be taken a column specification. <p>", true)
+      project.write_messages_to_all("Flexible csv flag detected. <p>", true)
 
       if !valid_field_definition?(@data_lines[0][0].downcase,csvfile)
         proceed = false
@@ -1307,7 +1307,7 @@ class CsvRecords <  CsvFile
         proceed, @data_entry_order = extract_data_field_order(@data_lines[0],csvfile)
       end
 
-      project.write_messages_to_all("Will use the following column specification \n\r #{@data_lines[0]} ", true)
+      project.write_messages_to_all("Using the following column specification \n\r #{@data_lines[0]}. <br><br>", true)
       if proceed
         # Remove the field-definition row from both @data_lines and the parallel
         # @data_line_file_rows so the two arrays stay in sync. After shift,
@@ -1347,7 +1347,10 @@ class CsvRecords <  CsvFile
           else
             insert = "Stray text or blank spaces?"
           end
-          csvfile.header_error << "The field order definition at position #{n}/ (column #{col_letter}) contains an invalid field: #{header_fields[n]} #{insert} <br>"
+          # convert position to 1 base index for output message
+          pos = n + 1
+          suffix = header_fields[n].present? ? "." : ""
+          csvfile.header_error << "The field order definition at position #{pos}/ (column #{col_letter}) contains an invalid field: #{header_fields[n]}#{suffix} #{insert} <br>"
 
         # csvfile.header_error << "The field order definition at position #{n} contains an invalid field: #{header_fields[n]} (is it blank?)}. <br>"
       end
@@ -1440,7 +1443,7 @@ class CsvRecords <  CsvFile
     csvfile.header_error << "The file has been process as extended but this file does not contain a DEF control"  unless success5
     if csvfile.header_error.present?
       if !success || !success1 || !success2 || !success3 || !success4 || !success5
-        project.write_messages_to_all("Processing was terminated because of a fatal header error. <p>",true)
+        project.write_messages_to_all("Processing was terminated because of a fatal header error. <br>",true)
         inform_the_user(csvfile,project)
         return false, "Header problem"
       else

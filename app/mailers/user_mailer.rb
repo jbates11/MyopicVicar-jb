@@ -88,7 +88,8 @@ class UserMailer < ActionMailer::Base
       success: false
     ).call
 
-    @appname = appname.to_s.downcase 
+    # @appname = appname.to_s.downcase
+    @appname = capitalize_suffix(appname.to_s)
     @message = result.message
     @person_forename = result.person_forename
 
@@ -180,7 +181,8 @@ class UserMailer < ActionMailer::Base
       appname: appname
     ).call
 
-    @appname = appname.to_s.downcase 
+    # @appname = appname.to_s.downcase 
+    @appname = capitalize_suffix(appname.to_s) 
     @message = result.message
     @person_forename = result.person_forename
 
@@ -766,6 +768,13 @@ class UserMailer < ActionMailer::Base
     [to_email, cc_email]
   end
 
+  def capitalize_suffix(appname, n = 3)
+    name = appname.to_s
+    prefix = name[0...-n].capitalize
+    suffix = name[-n..-1].upcase
+    "#{prefix}#{suffix}"
+  end
+
   def get_email_address_array_from_array_of_userids(userids)
     array_of_email_addresses = []
     if userids.present?
@@ -779,7 +788,6 @@ class UserMailer < ActionMailer::Base
     end
     array_of_email_addresses
   end
-
 
   def get_email_address_from_userid(userid)
     userid_object = UseridDetail.userid(userid).first

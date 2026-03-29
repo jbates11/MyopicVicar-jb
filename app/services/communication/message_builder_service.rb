@@ -88,14 +88,14 @@ module Communication
         prepend_alert("ALERT! This file was uploaded to your county by userid: #{@userid.userid} from a county group not associated with your county.")
       end
 
-      @subject = "WARNING: #{@userid.userid}/#{@file_name} processing encountered serious problem at #{Time.now}"
+      @subject = "WARNING: #{@userid.userid}/#{@file_name} serious processing problem"
       # @subject = "FAILED: #{@userid&.userid}/#{@file_name} could not be processed"
       # prepend_alert("WARNING: The processing of #{@userid.userid}/#{@file_name} failed. Please check the attached logs or error report.")
       handle_eligibility_alert
     end
 
     def build_freereg_normal_subject
-      errors  = @batch_result.errors || 0
+      errors  = @batch_result.errors || '?'
       datemin = @batch_result.datemin.to_s
       datemax = @batch_result.datemax.to_s
 
@@ -104,8 +104,10 @@ module Communication
     end
 
     def build_freereg_cross_county_subject
+      errors  = @batch_result.errors || '?'
+      
       @subject =
-        "* * * ALERT! Data was uploaded to your county from: #{@userid.userid}/#{@file_name}. * * *"
+        "* * * ALERT! Data uploaded to your county from: #{@userid.userid}/#{@file_name} with #{errors} errors. * * *"
     end
 
     # ---------------------------------------------------------------------------
