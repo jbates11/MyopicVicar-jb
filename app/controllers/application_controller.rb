@@ -27,7 +27,8 @@ class ApplicationController < ActionController::Base
   require 'userid_role'
   require 'register_type'
   require 'gdpr_countries'
-  helper_method :appname, :appname_upcase, :appname_downcase, :mobile_device?, :device_type
+  helper_method :appname, :appname_upcase, :appname_downcase, :mobile_device?, :device_type,
+                :current_authentication_devise_user
   def appname
     MyopicVicar::Application.config.freexxx_display_name
   end
@@ -90,20 +91,22 @@ class ApplicationController < ActionController::Base
     session[:userid_detail_id] = current_user.userid_detail_id
     session[:devise] = current_user.id
     logger.warn "#{appname_upcase}::USER current  #{current_user.username}"
-    scope = Devise::Mapping.find_scope!(resource_or_scope)
-    home_path = "#{scope}_root_path"
-    respond_to?(home_path, true) ? refinery.send(home_path) : main_app.new_manage_resource_path
+    main_app.new_manage_resource_path
   end
 
   def after_sign_in_path_for_old(resource_or_scope)
     cookies.signed[:Administrator] = Rails.application.config.github_issues_password
-    cookies.signed[:userid] = current_authentication_devise_user.userid_detail_id
-    session[:userid_detail_id] = current_authentication_devise_user.userid_detail_id
-    session[:devise] = current_authentication_devise_user.id
-    logger.warn "#{appname_upcase}::USER current  #{current_authentication_devise_user.username}"
-    scope = Devise::Mapping.find_scope!(resource_or_scope)
-    home_path = "#{scope}_root_path"
-    respond_to?(home_path, true) ? refinery.send(home_path) : main_app.new_manage_resource_path
+    u = current_user
+    cookies.signed[:userid] = u.userid_detail_id
+    session[:userid_detail_id] = u.userid_detail_id
+    session[:devise] = u.id
+    logger.warn "#{appname_upcase}::USER current  #{u.username}"
+    main_app.new_manage_resource_path
+  end
+
+  # Legacy name from Refinery::Authentication::Devise; app views and controllers still use it.
+  def current_authentication_devise_user
+    current_user
   end
 
   def check_for_mobile
