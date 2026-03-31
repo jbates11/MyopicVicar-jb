@@ -49,8 +49,10 @@ class User
 
   # Validate and sanitize login input
   validates :email, presence: true, uniqueness: { case_sensitive: false }
-  validates :username, presence: true, uniqueness: { case_sensitive:  false },
-            format: { with: /\A[a-zA-Z0-9_\-@. ]+\z/, message: "only allows letters, numbers, and basic symbols" }
+  # Match legacy UseridDetail.userid values (that field has no format validator).
+  # Disallow ASCII control chars only so migration (rake freeuk:add_user) can import all members.
+  validates :username, presence: true, uniqueness: { case_sensitive: false },
+            format: { with: /\A[^\x00-\x1f\x7f]+\z/, message: "must not contain control characters" }
 
 
   # Override Devise method to find user by login (email or username)
