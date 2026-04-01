@@ -19,7 +19,7 @@ $(document).ready(function() {
     };
   };
 */
-  /*donate cta 
+  /*donate cta*/ 
   window.setBigGiveCookie = function(name,value) {
     var expires = "";
     var date = new Date();
@@ -29,13 +29,10 @@ $(document).ready(function() {
   };
 
   var close_donate_cta = function(){
-    //setCookie('donate_cta_flag_new', 1,1);
-    setBigGiveCookie('donate_cta_flag_new', 1);//big gift code change
+    setBigGiveCookie('donate_cta_flag_new', 1);
     document.getElementById("myDialog").close(); 
       $("#donate_cta_pop_up").hide();
       document.getElementById("overlay").style.display = "none";
-      location.reload();
-
   };
 
   if ((getCookie('donate_cta_flag_new') == 0) || (getCookie('donate_cta_flag_new') === null)) {
