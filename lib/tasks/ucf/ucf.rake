@@ -501,7 +501,7 @@ namespace :ucf do
   #
   # rake ucf:refresh_ucf_lists
   #
-  # rake "ucf:refresh_ucf_lists[0, 0.1]""
+  # rake "ucf:refresh_ucf_lists[0, 0.1]"
   #
   # ============================================================================
   desc "Refresh UCF lists on places"
